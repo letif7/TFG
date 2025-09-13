@@ -1,3 +1,46 @@
+from .all_terms import optimizar_plegamiento_proteina
+
+def main():
+    """Función principal que ejecuta la optimización de plegamiento de proteínas."""
+    try:
+        print("="*60)
+        print("INICIO DE LA OPTIMIZACIÓN DE PLEGAMIENTO DE PROTEÍNAS")
+        print("="*60)
+        
+        # Ruta al archivo PDB de referencia
+        pdb_file = "/home/ubuntu/CopiaDeLlaves/demo_pdbs/1y32.pdb"  # <- Cambiar si se quiere otro PDB
+        
+        # Ejecutar la optimización con parámetros por defecto
+        solutions, stats = optimizar_plegamiento_proteina(
+            pdb_reference_file=pdb_file,
+            max_evaluations=1000,  # Ajustado para pruebas rápidas
+            population_size=50,    # Ajustado para pruebas rápidas
+            verbose=True
+        )
+        
+        if solutions:
+            print(f"\nOptimización completada exitosamente!")
+            print(f"Se encontraron {len(solutions)} soluciones no dominadas")
+            print(f"Tiempo de ejecución: {stats.get('execution_time', 'N/A'):.2f} segundos")
+        else:
+            print("La optimización se ejecutó, pero no se obtuvieron soluciones.")
+        
+    except FileNotFoundError as fnf_error:
+        print(f"Error: {fnf_error}")
+        return 1
+    except Exception as e:
+        print(f"Error durante la optimización: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
+    
+    return 0
+
+if __name__ == "__main__":
+    exit(main())
+
+
+
 """from .all_terms import optimizar_plegamiento_proteina
 
 def main():
@@ -17,8 +60,10 @@ def main():
     
     return 0
 """
+
+"""
 import matplotlib
-matplotlib.use("Agg")  # <- esto debe ir *antes* de importar pyplot
+matplotlib.use("Agg")  # <- esto debe ir **antes** de importar pyplot
 import matplotlib.pyplot as plt
 import os
 import glob
@@ -26,7 +71,6 @@ import numpy as np
 
 def plot_latest_objectives():
     # Carpeta donde se guardan los resultados
-    #results_dir = "/home/lnfg/TFG/KCM_NSGAII/results"
     results_dir = "/home/ubuntu/results"
     print(results_dir)
 
@@ -63,3 +107,4 @@ def plot_latest_objectives():
 
 if __name__ == "__main__":
     plot_latest_objectives()
+    """

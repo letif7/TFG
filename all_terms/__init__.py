@@ -233,6 +233,8 @@ def obtener_soluciones_del_algoritmo(algorithm):
     )
 
 
+from .pdb_seq_tools.pdb_seq_tools import extract_amino_acid_sequence, det_sec, extract_backbone_atoms_str
+
 def optimizar_plegamiento_proteina(
     pdb_reference_file: str = None,
     max_evaluations: int = 2500,
@@ -247,109 +249,39 @@ def optimizar_plegamiento_proteina(
     output_dir: str = "results",
     verbose: bool = True
 ) -> Tuple[List, dict]:
-    """
-    Optimiza el plegamiento de una proteína usando NSGA-II.
-    Automáticamente cuenta los residuos del archivo PDB y crea el problema.
-    
-    Args:
-        pdb_reference_file: Ruta al archivo PDB de referencia (por defecto usa 1y32.pdb)
-        max_evaluations: Número máximo de evaluaciones
-        population_size: Tamaño de la población
-        use_physicochemical_descriptors: Si usar descriptores fisicoquímicos
-        corte: Lista de distancias de corte para GDT
-        energia_params: Parámetros (a, b) para la función de energía
-        crossover_probability: Probabilidad de cruzamiento
-        mutation_probability: Probabilidad de mutación
-        crossover_distribution_index: Índice de distribución para cruzamiento SBX
-        mutation_distribution_index: Índice de distribución para mutación polinomial
-        output_dir: Directorio para guardar resultados
-        verbose: Si mostrar información durante la ejecución
-        
-    Returns:
-        Tuple[List, dict]: Tupla con (soluciones no dominadas, estadísticas del proceso)
-    """
-    
+
+    # Leer PDB
     if pdb_reference_file is None:
         pdb_reference_file = obtener_primer_pdb()
-
-    if verbose:
-        print("="*60)
-        print("OPTIMIZACIÓN DE PLEGAMIENTO DE PROTEÍNAS CON NSGA-II")
-        print("="*60)
-        print(f"Archivo PDB de referencia: {pdb_reference_file}")
-    
-    # Verificar que el archivo existe
     if not os.path.exists(pdb_reference_file):
         raise FileNotFoundError(f"No se encontró el archivo PDB: {pdb_reference_file}")
     
-    # Contar residuos automáticamente
-    if verbose:
-        print("Contando residuos en el archivo PDB...")
-    
-    num_residues = contar_residuos(pdb_reference_file)
-    
-    # Leer el contenido del PDB como string
-    if verbose:
-        print("Leyendo contenido del archivo PDB...")
-    
     pdb_content = leer_archivo_pdb(pdb_reference_file)
     
-    if verbose:
-        print(f"✓ Número de residuos detectados: {num_residues}")
-        print(f"✓ Contenido PDB leído: {len(pdb_content)} caracteres")
-        print(f"✓ Usar descriptores fisicoquímicos: {use_physicochemical_descriptors}")
-        print(f"✓ Parámetros de energía: a={energia_params[0]}, b={energia_params[1]}")
-    
-    # Crear el problema con los parámetros calculados automáticamente
-    try:
-        if verbose:
-            print("\nCreando problema de plegamiento de proteínas...")
-            
-        problem = ProteinFoldingProblem(
-            pdb_reference=pdb_content,  # Contenido del PDB como string
-            num_residues=num_residues,  # Número de residuos calculado automáticamente
-            use_physicochemical_descriptors=use_physicochemical_descriptors,
-            corte=corte,
-            energia_params=energia_params
-        )
-        
-        if verbose:
-            print(f"✓ Problema creado exitosamente:")
-            print(f"  - Variables: {problem.number_of_variables}")
-            print(f"  - Objetivos: {problem.number_of_objectives}")
-            print(f"  - Residuos: {problem.num_residues}")
-            
-    except Exception as e:
-        # DIAGNÓSTICO MEJORADO: Mostrar más detalles del error
-        import traceback
-        print(f"\nERROR DETALLADO:")
-        print(f"Tipo de error: {type(e).__name__}")
-        print(f"Mensaje: {str(e)}")
-        print(f"\nTraceback completo:")
-        traceback.print_exc()
-        
-        # Verificar las importaciones
-        print(f"\nDIAGNÓSTICO DE IMPORTACIONES:")
-        try:
-            print(f"ProteinFoldingProblem type: {type(ProteinFoldingProblem)}")
-            print(f"ProteinFoldingProblem: {ProteinFoldingProblem}")
-        except NameError:
-            print("ERROR: ProteinFoldingProblem no está definido")
-        
-        raise Exception(f"Error al crear el problema de plegamiento: {e}")
-    
-    # Configurar operadores genéticos
-    crossover = SBXCrossover(
-        probability=crossover_probability, 
-        distribution_index=crossover_distribution_index
+    # Extraer secuencia de aminoácidos usando tu función
+    amino_seq = extract_amino_acid_sequence(pdb_content)
+    num_residues = len(amino_seq)
+
+    # Guardar el PDB en un archivo temporal
+    pdb_file = "/home/ubuntu/CopiaDeLlaves/demo_pdbs/1y32.pdb"
+    with open(pdb_file, "w") as f:
+        f.write(pdb_content)
+
+    # Crear problema
+    problem = ProteinFoldingProblem(
+        pdb_reference=pdb_file,
+        sequence_length=num_residues,   # <--- CORREGIDO
+        use_physicochemical_descriptors=use_physicochemical_descriptors,
+        corte=corte,
+        energia_params=energia_params
     )
-    
-    mutation = PolynomialMutation(
-        probability=mutation_probability / problem.number_of_variables,
-        distribution_index=mutation_distribution_index
-    )
-    
-    # Crear el algoritmo NSGA-II
+    # Operadores genéticos
+    crossover = SBXCrossover(probability=crossover_probability, 
+                             distribution_index=crossover_distribution_index)
+    mutation = PolynomialMutation(probability=mutation_probability / problem.number_of_variables,
+                                 distribution_index=mutation_distribution_index)
+
+    # Algoritmo NSGA-II
     algorithm = NSGAII(
         problem=problem,
         population_size=population_size,
@@ -358,84 +290,18 @@ def optimizar_plegamiento_proteina(
         crossover=crossover,
         termination_criterion=StoppingByEvaluations(max_evaluations)
     )
-    
-    if verbose:
-        print("\nConfiguración del algoritmo:")
-        print(f"- Algoritmo: NSGA-II")
-        print(f"- Tamaño de población: {population_size}")
-        print(f"- Máximo de evaluaciones: {max_evaluations}")
-        print(f"- Probabilidad de cruzamiento: {crossover_probability}")
-        print(f"- Probabilidad de mutación: {mutation_probability}")
-        print("\nIniciando optimización...")
-    
-    # Ejecutar el algoritmo
-    start_time = datetime.datetime.now()
+
     algorithm.run()
-    end_time = datetime.datetime.now()
-    
-    # Obtener resultados de manera robusta
-    try:
-        if verbose:
-            print("Obteniendo resultados...")
-        
-        solutions = obtener_soluciones_del_algoritmo(algorithm)
-        
-        if verbose:
-            print(f"✓ Soluciones obtenidas: {len(solutions)}")
-            
-    except Exception as e:
-        print(f"❌ Error al obtener soluciones: {e}")
-        print("Información de depuración del algoritmo:")
-        print(f"Tipo de algoritmo: {type(algorithm)}")
-        print(f"Atributos disponibles: {[attr for attr in dir(algorithm) if not attr.startswith('__')]}")
-        raise
-    
-    # Obtener soluciones no dominadas
+
+    solutions = obtener_soluciones_del_algoritmo(algorithm)
     non_dominated_solutions = get_non_dominated_solutions(solutions)
-    
-    execution_time = (end_time - start_time).total_seconds()
-    
-    if verbose:
-        print(f"\n✓ Optimización completada!")
-        print(f"⏱️ Tiempo de ejecución: {execution_time:.2f} segundos")
-        print(f"🧬 Soluciones totales: {len(solutions)}")
-        print(f"🏆 Soluciones no dominadas: {len(non_dominated_solutions)}")
-    
-    # Crear directorio de resultados si no existe
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    
-    # Guardar resultados
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    
-    # Guardar valores de función objetivo
-    objectives_file = os.path.join(output_dir, f"objectives_{timestamp}.txt")
-    print_function_values_to_file(non_dominated_solutions, objectives_file)
-    
-    # Guardar variables (coordenadas)
-    variables_file = os.path.join(output_dir, f"variables_{timestamp}.txt")
-    print_variables_to_file(non_dominated_solutions, variables_file)
-    
-    # Crear estadísticas detalladas
-    stats = crear_estadisticas_detalladas(non_dominated_solutions, execution_time, 
-                                        max_evaluations, population_size)
-    
-    # Guardar estadísticas
-    stats_file = os.path.join(output_dir, f"statistics_{timestamp}.txt")
-    guardar_estadisticas(stats, stats_file)
-    
-    if verbose:
-        print(f"\n💾 Resultados guardados en:")
-        print(f"  - Objetivos: {objectives_file}")
-        print(f"  - Variables: {variables_file}")
-        print(f"  - Estadísticas: {stats_file}")
-        
-        # Mostrar estadísticas básicas
-        if non_dominated_solutions:
-            print(f"\n📊 Análisis de las mejores soluciones:")
-            mostrar_top_soluciones(non_dominated_solutions, top_n=5)
-    
-    return non_dominated_solutions, stats
+
+    # Mapear floats a aminoácidos usando det_sec
+    for sol in non_dominated_solutions:
+        posiciones = [int(round(v)) for v in sol.variables]  # convertir floats a enteros
+        sol.attributes['amino_sequence'] = det_sec(posiciones, amino_seq)
+
+    return non_dominated_solutions, crear_estadisticas_detalladas(non_dominated_solutions, 0, max_evaluations, population_size)
 
 
 def obtener_soluciones_del_algoritmo(algorithm):
@@ -645,3 +511,33 @@ def ejemplo_uso():
     mutation_probability=0.05,
     output_dir='my_results'
 )""")
+
+
+def main():
+    """Función principal para ejecutar la optimización de plegamiento de proteínas."""
+    try:
+        # Ejecutar optimización con parámetros por defecto
+        solutions, stats = optimizar_plegamiento_proteina(
+            max_evaluations=1000,  # Reducido para pruebas rápidas
+            population_size=50,    # Reducido para pruebas rápidas
+            verbose=True
+        )
+        
+        return solutions, stats
+        
+    except Exception as e:
+        print(f"❌ Error durante la optimización: {e}")
+        import traceback
+        traceback.print_exc()
+        return None, None
+
+
+# Hacer disponibles las funciones principales al importar el módulo
+__all__ = [
+    'optimizar_plegamiento_proteina',
+    'contar_residuos',
+    'ProteinFoldingProblem',
+    'ejemplo_uso',
+    'main'
+]
+
