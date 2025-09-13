@@ -1,6 +1,10 @@
 from .Algorithm_evolutionary.algorithm_evolutionary import EDA_isla
 import os
 import pyrosetta
+from pathlib import Path
+import csv
+import matplotlib.pyplot as plt
+
 
 def run(max_generations = 1000, 
         population_size = 5, 
@@ -99,6 +103,80 @@ import datetime
 
 # Importar la clase del problema
 from .ProteinFoldingProblem.ProteinFoldingProblem import ProteinFoldingProblem
+
+def exportar_pareto_y_variables_csv(solutions, outdir: str):
+    """
+    Guarda:
+      - pareto_points.csv: objetivos y métricas principales
+      - pareto_variables.csv: variables reales y (si existe) secuencia
+    """
+    Path(outdir).mkdir(parents=True, exist_ok=True)
+    fun_path = os.path.join(outdir, "pareto_points.csv")
+    var_path = os.path.join(outdir, "pareto_variables.csv")
+
+    # Puntos del frente (funciones / métricas)
+    with open(fun_path, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["idx", "RMSD", "GDT", "Energy", "TM-Score", "Fitness", "KL", "SeqLen"])
+        for i, s in enumerate(solutions, start=1):
+            attrs = getattr(s, "attributes", {}) or {}
+            rmsd = attrs.get("rmsd", s.objectives[0] if len(s.objectives) > 0 else "")
+            # GDT lo guardamos positivo (si no está en attrs, lo inferimos como -obj[1])
+            gdt = attrs.get("gdt", -s.objectives[1] if len(s.objectives) > 1 else "")
+            en = attrs.get("design_energy", s.objectives[2] if len(s.objectives) > 2 else "")
+            tms = attrs.get("tms_score", "")
+            fit = attrs.get("fitness_total", "")
+            kl = attrs.get("kl_divergence", "")
+            seql = len(attrs.get("sequence", "")) if "sequence" in attrs else ""
+            w.writerow([i, rmsd, gdt, en, tms, fit, kl, seql])
+
+    # Variables (y secuencia si está)
+    with open(var_path, "w", newline="") as f:
+        w = csv.writer(f)
+        # encabezado dinámico
+        max_vars = max(len(s.variables) for s in solutions) if solutions else 0
+        header = ["idx", "sequence"] + [f"var_{i}" for i in range(max_vars)]
+        w.writerow(header)
+        for i, s in enumerate(solutions, start=1):
+            seq = (getattr(s, "attributes", {}) or {}).get("sequence", "")
+            row = [i, seq] + list(s.variables) + [""] * (max_vars - len(s.variables))
+            w.writerow(row)
+
+    print(f"✅ Guardado frente en: {fun_path}")
+    print(f"✅ Guardadas variables en: {var_path}")
+
+
+def plot_pareto_front_3d(solutions, outdir: str, filename: str = "pareto_3d.png"):
+    """
+    Grafica RMSD (x), GDT (y, positivo) y Energía (z).
+    """
+    Path(outdir).mkdir(parents=True, exist_ok=True)
+    xs, ys, zs = [], [], []
+    for s in solutions:
+        attrs = getattr(s, "attributes", {}) or {}
+        x = attrs.get("rmsd", s.objectives[0] if len(s.objectives) > 0 else None)
+        y = attrs.get("gdt", -s.objectives[1] if len(s.objectives) > 1 else None)
+        z = attrs.get("design_energy", s.objectives[2] if len(s.objectives) > 2 else None)
+        if x is not None and y is not None and z is not None:
+            xs.append(x)
+            ys.append(y)
+            zs.append(z)
+    if not xs:
+        print("⚠️ No hay datos para graficar el frente.")
+        return
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+    ax.scatter(xs, ys, zs)
+    ax.set_xlabel("RMSD ↓")
+    ax.set_ylabel("GDT ↑")
+    ax.set_zlabel("Energía (Rosetta) ↓")
+    ax.set_title("Frente de Pareto (RMSD–GDT–Energía)")
+    out_path = os.path.join(outdir, filename)
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=140)
+    plt.close(fig)
+    print(f"🖼️ Gráfico guardado en: {out_path}")
+
 
 
 def contar_residuos(pdb_file: str) -> int:
@@ -263,7 +341,7 @@ def optimizar_plegamiento_proteina(
     num_residues = len(amino_seq)
 
     # Guardar el PDB en un archivo temporal
-    pdb_file = "/home/ubuntu/CopiaDeLlaves/demo_pdbs/1y32.pdb"
+    pdb_file = "/home/lnfg/TFG/KCM_NSGAII/TFG/demo_pdbs/1y32.pdb"
     with open(pdb_file, "w") as f:
         f.write(pdb_content)
 
@@ -296,12 +374,99 @@ def optimizar_plegamiento_proteina(
     solutions = obtener_soluciones_del_algoritmo(algorithm)
     non_dominated_solutions = get_non_dominated_solutions(solutions)
 
+    # Imprimir TODAS las no dominadas
+    print("\n=== SOLUCIONES NO DOMINADAS ===")
+    mostrar_top_soluciones(non_dominated_solutions, top_n=len(non_dominated_solutions))
+
+    # Asegurar carpeta de salida
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+    # Guardar archivos estándar jMetal (TSV)
+    print_function_values_to_file(non_dominated_solutions, os.path.join(output_dir, "PARETO_FUN.tsv"))
+    print_variables_to_file(non_dominated_solutions, os.path.join(output_dir, "PARETO_VAR.tsv"))
+
+    # Guardar CSVs legibles + gráfico
+    exportar_pareto_y_variables_csv(non_dominated_solutions, output_dir)
+    plot_pareto_front_3d(non_dominated_solutions, output_dir)
+
+    # Elegir mejor solución (cambia 'fitness' por 'rmsd' o 'energy' si prefieres)
+    best = elegir_mejor_solucion(non_dominated_solutions, prefer='rmsd')
+
+    # Obtener la secuencia de la mejor solución
+    attrs = getattr(best, "attributes", {}) or {}
+    best_seq = attrs.get("sequence") or attrs.get("amino_sequence")
+    if not best_seq:
+        # fallback: mapear desde variables (por si no quedó la secuencia en attrs)
+        posiciones = [int(round(v)) for v in best.variables]
+        best_seq = det_sec(posiciones, amino_seq)
+
+    # Guardar PDB con ESMFold
+    esm_pdb_path = os.path.join(output_dir, "best_by_fitness_esmfold.pdb")
+    try:
+        ruta = guardar_pdb_con_esmfold(best_seq, esm_pdb_path)
+        print(f"PDB (ESMFold) guardada en: {ruta}")
+    except Exception as e:
+        print(f"⚠️ No se pudo generar PDB con ESMFold: {e}")
+
+
     # Mapear floats a aminoácidos usando det_sec
     for sol in non_dominated_solutions:
         posiciones = [int(round(v)) for v in sol.variables]  # convertir floats a enteros
         sol.attributes['amino_sequence'] = det_sec(posiciones, amino_seq)
 
     return non_dominated_solutions, crear_estadisticas_detalladas(non_dominated_solutions, 0, max_evaluations, population_size)
+
+def elegir_mejor_solucion(solutions, prefer='fitness'):
+    """
+    prefer ∈ {'fitness', 'rmsd', 'energy'}:
+      - 'fitness': menor fitness_total
+      - 'rmsd'   : menor RMSD
+      - 'energy' : menor energy (Rosetta)
+    """
+    def attr(s, k, default=float('inf')):
+        return (getattr(s, "attributes", {}) or {}).get(k, default)
+
+    candidatas = [s for s in solutions if hasattr(s, "attributes")]
+    if not candidatas:
+        candidatas = solutions
+
+    if prefer == 'energy':
+        keyfn = lambda s: attr(s, 'design_energy')
+    elif prefer == 'rmsd':
+        keyfn = lambda s: attr(s, 'rmsd')
+    else:
+        keyfn = lambda s: attr(s, 'fitness_total')
+
+    return min(candidatas, key=keyfn)
+
+
+def guardar_pdb_con_esmfold(sequence: str, out_path: str, device: str = None, chunk_size: int = 64):
+    """
+    Genera un PDB con ESMFold desde 'sequence' y lo guarda en 'out_path'.
+    """
+    import torch
+    import esm
+
+    seq = (sequence or "").strip().upper().replace(" ", "")
+    if not seq:
+        raise ValueError("Secuencia vacía para ESMFold.")
+
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    model = esm.pretrained.esmfold_v1()
+    model = model.eval().to(device)
+    try:
+        # para secuencias largas en CPU; para 24 aa no es crítico
+        model.set_chunk_size(chunk_size)
+    except Exception:
+        pass
+
+    with torch.no_grad():
+        pdb_str = model.infer_pdb(seq)
+    with open(out_path, "w") as f:
+        f.write(pdb_str)
+    return out_path
 
 
 def obtener_soluciones_del_algoritmo(algorithm):

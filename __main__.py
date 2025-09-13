@@ -1,4 +1,4 @@
-from .all_terms import optimizar_plegamiento_proteina
+from .all_terms import elegir_mejor_solucion, optimizar_plegamiento_proteina
 
 def main():
     """Función principal que ejecuta la optimización de plegamiento de proteínas."""
@@ -8,13 +8,13 @@ def main():
         print("="*60)
         
         # Ruta al archivo PDB de referencia
-        pdb_file = "/home/ubuntu/CopiaDeLlaves/demo_pdbs/1y32.pdb"  # <- Cambiar si se quiere otro PDB
+        pdb_file = "/home/lnfg/TFG/KCM_NSGAII/TFG/demo_pdbs/1y32.pdb"  # <- Cambiar si se quiere otro PDB
         
         # Ejecutar la optimización con parámetros por defecto
         solutions, stats = optimizar_plegamiento_proteina(
             pdb_reference_file=pdb_file,
-            max_evaluations=1000,  # Ajustado para pruebas rápidas
-            population_size=50,    # Ajustado para pruebas rápidas
+            max_evaluations=100,  #  para pruebas 
+            population_size=50,    #  para prueba
             verbose=True
         )
         
@@ -22,6 +22,13 @@ def main():
             print(f"\nOptimización completada exitosamente!")
             print(f"Se encontraron {len(solutions)} soluciones no dominadas")
             print(f"Tiempo de ejecución: {stats.get('execution_time', 'N/A'):.2f} segundos")
+            best = elegir_mejor_solucion(solutions, prefer='rmsd')
+            attrs = getattr(best, "attributes", {}) or {}
+            seq = attrs.get("sequence") or attrs.get("amino_sequence") or ""
+            print("\n=== MEJOR SOLUCIÓN (criterio: rmsd) ===")
+            print(f"Secuencia: {seq}")
+            print(f"RMSD: {attrs.get('rmsd')}, GDT: {attrs.get('gdt')}, Energy: {attrs.get('design_energy')}")
+            print("Si no se imprimió arriba la ruta del PDB con ESMFold, revisa los logs de generación.")
         else:
             print("La optimización se ejecutó, pero no se obtuvieron soluciones.")
         

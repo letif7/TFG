@@ -1,4 +1,6 @@
 import numpy as np
+import logging
+import os
 from jmetal.core.problem import FloatProblem
 from jmetal.core.solution import FloatSolution
 from typing import List, Dict
@@ -96,12 +98,26 @@ class ProteinFoldingProblem(FloatProblem):
 
     def _extract_reference_data(self):
         try:
-            self.backbone_reference = extract_backbone_atoms_str(self.pdb_reference)
-            self.reference_sequence = extract_amino_acid_sequence(self.pdb_reference)
+            # Si self.pdb_reference es una ruta, lee su contenido
+            if os.path.exists(self.pdb_reference):
+                with open(self.pdb_reference, "r") as f:
+                    pdb_text = f.read()
+            else:
+                # ya es el contenido PDB en texto
+                pdb_text = self.pdb_reference
+
+            # Pasa CONTENIDO a las funciones *_str
+            self.backbone_reference = extract_backbone_atoms_str(pdb_text)
+            self.reference_sequence = extract_amino_acid_sequence(pdb_text)
+
             self.MC_reference = mapa_contacto(self.backbone_reference)
             logging.info(f"Secuencia de referencia: {self.reference_sequence}")
+
             if self.sequence_length != len(self.reference_sequence):
-                logging.warning(f"Longitud especificada ({self.sequence_length}) difiere de la secuencia de referencia ({len(self.reference_sequence)})")
+                logging.warning(
+                    f"Longitud especificada ({self.sequence_length}) "
+                    f"difiere de la secuencia de referencia ({len(self.reference_sequence)})"
+                )
         except Exception as e:
             raise ValueError(f"Error al extraer datos de referencia del PDB: {e}")
 
