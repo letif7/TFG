@@ -1,361 +1,67 @@
-from .Algorithm_evolutionary.algorithm_evolutionary import EDA_isla
 import os
-import pyrosetta
-from pathlib import Path
 import csv
+from pathlib import Path
 import matplotlib.pyplot as plt
-
-
-def run(max_generations = 1000, 
-        population_size = 5, 
-        sample_size = 3,
-        input_folder = 'target_pdbs'):
-    pyrosetta.init()
-    directorio_trabajo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    ruta_carpeta_bd_selected = os.path.join(directorio_trabajo, input_folder)
-    archivos_en_bd_selected = os.listdir(ruta_carpeta_bd_selected)
-    for i in archivos_en_bd_selected:
-        pdb_file_path = os.path.join(ruta_carpeta_bd_selected,i)
-        print(pdb_file_path)
-
-        "se determinaran los descriptores fisicoquimicos 1 si si 0 si no"
-        desc_si_no=1
-
-        "ESMfold se ejecuta de manera local"
-        local=0
-
-        "Cuando se esta trabajando en colab"
-        nueva_ruta='algo'
-
-        "1 si es continuacion de una ejecucion anterior, 0 otro caso"
-        # if i=='cesarp.pdb':
-        #     continua=1
-        # else:
-        #     continua=0
-        continua = 0
-
-        "ultimo dato guardado de las ejecuciones anteriores, rellenar si continua=1"
-        numnum=460
-        "valores de a y b en la funcion objetivo para dilatar la energia"
-        a=30
-        b=30
-
-        "cantidad de individuos por los que estara formada la poblacion"
-        n_pop=population_size
-        "ejecuciones de cada individuo por etapa"
-        n_rep=sample_size
-        "Cantidad de ejecuciones a determinar el fitnes"
-        n_fit=3
-        "cantidad a actualizar del propio"
-        act_prop=2
-        "cantidad a actualizar del global"
-        act_glob=1
-        "cantidad de mejores elementos guardados (las ejecuciones de menor fitness)"
-        n_best=80
-        "posicion en el arreglo donde se encuetra el elmento de menor fitness"
-        pos_min=n_best-1
-        "Numero de generaciones"
-        n_generaciones=max_generations
-        "cantidad de elementod de la poblacion que se reiniciaran"
-        n_reinicia=8
-        "numero de generaciones para reiniciarce"
-        #n_genra_reinicio=50
-        n_genra_reinicio=20
-
-        "Corte para el GDT"
-        corte=[1,2,4,8]
-
-        "Variables y nombres"
-        aminoacidos_nombre = ['Valina','Leucina','Isoleucina','Metionina','Fenilalanina','Lisina','Arginina','Histidina','Ácido aspártico','Ácido glutámico','Asparagina','Glutamina','Tirosina','Triptófano','Serina','Treonina','Prolina','Alanina','Glicina','Cisteína']
-        amino = ['A', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'V', 'W', 'Y']
-
-        "Islas a utilizar en el algoritmo"
-        islas=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
-        #islas=[15,16,17,18,19,20]
-
-        "con que probabilidad va ha haber coperacion entre las islas"
-        prob_copera=0.10
-
-        "cantidad de elementos a ser seleccionados para colaborar"
-        n_colab=1
-        #EDA_tres_capas(pdb_file_path,desc_si_no,continua,numnum,n_pop,n_rep,n_fit,act_prop,act_glob,n_best,pos_min,n_generaciones,n_reinicia,n_genra_reinicio,corte,amino,a,b,local,nueva_ruta)
-        #poblacion, best_execution,best_fitness,pdb_select,best_fitness_energ=Algoritmo_evolutivo_energia_MC_descriptor(continua,n,n_pop,n_rep,n_fit,act_prop,act_glob,amino,num_amino,n_best,n_generaciones,pos_min,BB,w1,w2,corte,tokenizer,model,nrep,mat_frec,nombre_sin_extension,n_func,MC_BB,ruta_archivo,numnum,secuencia_ref)
-        "cantidad de elementos utilizados para actualizar la red"
-        tot_act_red=1500
-
-        "detener cuando se tenga un gdt deceado"
-        max_gdt=1.2
-
-        EDA_isla(pdb_file_path,desc_si_no,continua,numnum,n_pop,n_rep,n_fit,act_prop,act_glob,n_best,pos_min,n_generaciones,
-                    n_reinicia,n_genra_reinicio,corte,amino,a,b,local,nueva_ruta, islas,prob_copera,n_colab,tot_act_red,max_gdt)
-
-
-# __init__.py
 import numpy as np
-from Bio.PDB import PDBParser
+
+# jMetal imports
 from jmetal.algorithm.multiobjective import NSGAII
 from jmetal.operator import SBXCrossover, PolynomialMutation
 from jmetal.util.termination_criterion import StoppingByEvaluations
 from jmetal.util.solution import get_non_dominated_solutions, print_function_values_to_file, print_variables_to_file
-from typing import List, Optional, Tuple
-import os
-import datetime
 
-# Importar la clase del problema
-from .ProteinFoldingProblem.ProteinFoldingProblem import ProteinFoldingProblem
+# BioPython
+from Bio.PDB import PDBParser
 
-def exportar_pareto_y_variables_csv(solutions, outdir: str):
-    """
-    Guarda:
-      - pareto_points.csv: objetivos y métricas principales
-      - pareto_variables.csv: variables reales y (si existe) secuencia
-    """
-    Path(outdir).mkdir(parents=True, exist_ok=True)
-    fun_path = os.path.join(outdir, "pareto_points.csv")
-    var_path = os.path.join(outdir, "pareto_variables.csv")
+# Importar tus clases locales (asegúrate de que estén en la misma carpeta de Colab)
+from ProteinFoldingProblem import ProteinFoldingProblem
+from pdb_seq_tools import extract_amino_acid_sequence, det_sec, extract_backbone_atoms_str
+from Algorithm_evolutionary.algorithm_evolutionary import EDA_isla
 
-    # Puntos del frente (funciones / métricas)
-    with open(fun_path, "w", newline="") as f:
-        w = csv.writer(f)
-        w.writerow(["idx", "RMSD", "GDT", "Energy", "TM-Score", "Fitness", "KL", "SeqLen"])
-        for i, s in enumerate(solutions, start=1):
-            attrs = getattr(s, "attributes", {}) or {}
-            rmsd = attrs.get("rmsd", s.objectives[0] if len(s.objectives) > 0 else "")
-            # GDT lo guardamos positivo (si no está en attrs, lo inferimos como -obj[1])
-            gdt = attrs.get("gdt", -s.objectives[1] if len(s.objectives) > 1 else "")
-            en = attrs.get("design_energy", s.objectives[2] if len(s.objectives) > 2 else "")
-            tms = attrs.get("tms_score", "")
-            fit = attrs.get("fitness_total", "")
-            kl = attrs.get("kl_divergence", "")
-            seql = len(attrs.get("sequence", "")) if "sequence" in attrs else ""
-            w.writerow([i, rmsd, gdt, en, tms, fit, kl, seql])
-
-    # Variables (y secuencia si está)
-    with open(var_path, "w", newline="") as f:
-        w = csv.writer(f)
-        # encabezado dinámico
-        max_vars = max(len(s.variables) for s in solutions) if solutions else 0
-        header = ["idx", "sequence"] + [f"var_{i}" for i in range(max_vars)]
-        w.writerow(header)
-        for i, s in enumerate(solutions, start=1):
-            seq = (getattr(s, "attributes", {}) or {}).get("sequence", "")
-            row = [i, seq] + list(s.variables) + [""] * (max_vars - len(s.variables))
-            w.writerow(row)
-
-    print(f"✅ Guardado frente en: {fun_path}")
-    print(f"✅ Guardadas variables en: {var_path}")
-
-
-def plot_pareto_front_3d(solutions, outdir: str, filename: str = "pareto_3d.png"):
-    """
-    Grafica RMSD (x), GDT (y, positivo) y Energía (z).
-    """
-    Path(outdir).mkdir(parents=True, exist_ok=True)
-    xs, ys, zs = [], [], []
-    for s in solutions:
-        attrs = getattr(s, "attributes", {}) or {}
-        x = attrs.get("rmsd", s.objectives[0] if len(s.objectives) > 0 else None)
-        y = attrs.get("gdt", -s.objectives[1] if len(s.objectives) > 1 else None)
-        z = attrs.get("design_energy", s.objectives[2] if len(s.objectives) > 2 else None)
-        if x is not None and y is not None and z is not None:
-            xs.append(x)
-            ys.append(y)
-            zs.append(z)
-    if not xs:
-        print("⚠️ No hay datos para graficar el frente.")
-        return
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection="3d")
-    ax.scatter(xs, ys, zs)
-    ax.set_xlabel("RMSD ↓")
-    ax.set_ylabel("GDT ↑")
-    ax.set_zlabel("Energía (Rosetta) ↓")
-    ax.set_title("Frente de Pareto (RMSD–GDT–Energía)")
-    out_path = os.path.join(outdir, filename)
-    plt.tight_layout()
-    plt.savefig(out_path, dpi=140)
-    plt.close(fig)
-    print(f"🖼️ Gráfico guardado en: {out_path}")
-
-
-
-def contar_residuos(pdb_file: str) -> int:
-    """
-    Cuenta el número de residuos únicos en un archivo PDB.
-    
-    Args:
-        pdb_file: Ruta al archivo PDB
-        
-    Returns:
-        int: Número de residuos únicos en la proteína
-    """
-    parser = PDBParser(QUIET=True)
-    structure = parser.get_structure("protein", pdb_file)
-    
-    residuos_unicos = set()
-    
-    for model in structure:
-        for chain in model:
-            for residue in chain:
-                if residue.id[0] == " ":  # Solo aminoácidos estándar
-                    residuos_unicos.add((chain.id, residue.id[1]))
-    
-    return len(residuos_unicos)
-
-
-def leer_archivo_pdb(pdb_file: str) -> str:
-    """
-    Lee el contenido de un archivo PDB y lo retorna como string.
-    
-    Args:
-        pdb_file: Ruta al archivo PDB
-        
-    Returns:
-        str: Contenido del archivo PDB
-    """
-    try:
-        with open(pdb_file, 'r') as f:
-            return f.read()
-    except FileNotFoundError:
-        raise FileNotFoundError(f"No se encontró el archivo PDB: {pdb_file}")
-    except Exception as e:
-        raise Exception(f"Error al leer el archivo PDB: {e}")
-
-
-def obtener_primer_pdb(input_folder='demo_pdbs'):
-    """
-    Obtiene la ruta del primer archivo en la carpeta especificada.
-    
-    Args:
-        input_folder (str): Nombre de la carpeta que contiene los archivos PDB
-        
-    Returns:
-        str: Ruta completa del primer archivo encontrado
-        
-    Raises:
-        FileNotFoundError: Si la carpeta no existe
-        ValueError: Si no hay archivos en la carpeta
-    """
-    # Obtener directorio de trabajo (2 niveles arriba del archivo actual)
-    directorio_trabajo = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    
-    # Construir ruta a la carpeta de PDBs
-    ruta_carpeta_bd_selected = os.path.join(directorio_trabajo, input_folder)
-    
-    # Verificar que la carpeta existe
-    if not os.path.exists(ruta_carpeta_bd_selected):
-        raise FileNotFoundError(f"La carpeta {ruta_carpeta_bd_selected} no existe")
-    
-    # Listar archivos en la carpeta
-    archivos_en_bd_selected = os.listdir(ruta_carpeta_bd_selected)
-    
-    # Verificar que hay archivos
-    if not archivos_en_bd_selected:
-        raise ValueError(f"No hay archivos en la carpeta {ruta_carpeta_bd_selected}")
-    
-    # Obtener el primer archivo y construir ruta completa
-    primer_archivo = archivos_en_bd_selected[0]
-    pdb_file_path = os.path.join(ruta_carpeta_bd_selected, primer_archivo)
-    
-    return pdb_file_path
-
-
-def obtener_soluciones_del_algoritmo(algorithm):
-    """
-    Obtiene las soluciones del algoritmo NSGA-II de manera robusta,
-    compatible con diferentes versiones de jMetal.
-    
-    Args:
-        algorithm: Instancia del algoritmo NSGA-II ejecutado
-        
-    Returns:
-        List: Lista de soluciones encontradas por el algoritmo
-    """
-    # Intentar diferentes métodos según la versión de jMetal
-    methods_to_try = [
-        'get_result',      # Método más común en versiones recientes
-        'get_results',     # Variante con 's'
-        'result',          # Propiedad directa
-        'solutions',       # Otra propiedad posible
-        'population'       # En algunas versiones
-    ]
-    
-    for method_name in methods_to_try:
-        try:
-            if hasattr(algorithm, method_name):
-                method_or_attr = getattr(algorithm, method_name)
-                
-                # Si es un método (callable), llamarlo
-                if callable(method_or_attr):
-                    return method_or_attr()
-                # Si es una propiedad, accederla directamente
-                else:
-                    return method_or_attr
-        except Exception as e:
-            print(f"⚠️ Método {method_name} falló: {e}")
-            continue
-    
-    # Si ningún método funciona, intentar acceso directo a atributos internos
-    possible_attributes = ['_population', '_result', '_solutions']
-    for attr_name in possible_attributes:
-        if hasattr(algorithm, attr_name):
-            try:
-                return getattr(algorithm, attr_name)
-            except Exception:
-                continue
-    
-    raise AttributeError(
-        f"No se pudo obtener las soluciones del algoritmo. "
-        f"Métodos intentados: {methods_to_try}. "
-        f"Atributos disponibles: {[attr for attr in dir(algorithm) if not attr.startswith('_')]}"
-    )
-
-
-from .pdb_seq_tools.pdb_seq_tools import extract_amino_acid_sequence, det_sec, extract_backbone_atoms_str
 
 def optimizar_plegamiento_proteina(
     pdb_reference_file: str = None,
     max_evaluations: int = 2500,
     population_size: int = 100,
     use_physicochemical_descriptors: bool = True,
-    corte: List[float] = [1.0, 2.0, 4.0, 8.0],
-    energia_params: Tuple[float, float] = (-50.0, 10.0),
+    corte: list = [1.0, 2.0, 4.0, 8.0],
+    energia_params: tuple = (-50.0, 10.0),
     crossover_probability: float = 0.9,
     mutation_probability: float = 0.1,
     crossover_distribution_index: float = 20.0,
     mutation_distribution_index: float = 20.0,
     output_dir: str = "results",
     verbose: bool = True
-) -> Tuple[List, dict]:
+) -> tuple:
 
-    # Leer PDB
+    # Directorio de trabajo en Colab
+    directorio_trabajo = os.getcwd()
+
+    # Obtener PDB
     if pdb_reference_file is None:
-        pdb_reference_file = obtener_primer_pdb()
+        pdb_reference_file = obtener_primer_pdb(input_folder='demo_pdbs')
     if not os.path.exists(pdb_reference_file):
         raise FileNotFoundError(f"No se encontró el archivo PDB: {pdb_reference_file}")
-    
+
     pdb_content = leer_archivo_pdb(pdb_reference_file)
-    
-    # Extraer secuencia de aminoácidos usando tu función
+
+    # Extraer secuencia de aminoácidos
     amino_seq = extract_amino_acid_sequence(pdb_content)
     num_residues = len(amino_seq)
 
-    # Guardar el PDB en un archivo temporal
-    pdb_file = "/home/lnfg/TFG/KCM_NSGAII/TFG/demo_pdbs/1y32.pdb"
-    with open(pdb_file, "w") as f:
-        f.write(pdb_content)
+    pdb_file = pdb_reference_file  # Usamos directamente la referencia
 
     # Crear problema
     problem = ProteinFoldingProblem(
         pdb_reference=pdb_file,
-        sequence_length=num_residues,   # <--- CORREGIDO
+        sequence_length=num_residues,
         use_physicochemical_descriptors=use_physicochemical_descriptors,
         corte=corte,
         energia_params=energia_params
     )
+
     # Operadores genéticos
-    crossover = SBXCrossover(probability=crossover_probability, 
-                             distribution_index=crossover_distribution_index)
+    crossover = SBXCrossover(probability=crossover_probability, distribution_index=crossover_distribution_index)
     mutation = PolynomialMutation(probability=mutation_probability / problem.number_of_variables,
                                  distribution_index=mutation_distribution_index)
 
@@ -374,29 +80,27 @@ def optimizar_plegamiento_proteina(
     solutions = obtener_soluciones_del_algoritmo(algorithm)
     non_dominated_solutions = get_non_dominated_solutions(solutions)
 
-    # Imprimir TODAS las no dominadas
-    print("\n=== SOLUCIONES NO DOMINADAS ===")
+    # Mostrar resultados
     mostrar_top_soluciones(non_dominated_solutions, top_n=len(non_dominated_solutions))
 
-    # Asegurar carpeta de salida
+    # Crear carpeta de salida
     Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    # Guardar archivos estándar jMetal (TSV)
+    # Guardar archivos estándar jMetal
     print_function_values_to_file(non_dominated_solutions, os.path.join(output_dir, "PARETO_FUN.tsv"))
     print_variables_to_file(non_dominated_solutions, os.path.join(output_dir, "PARETO_VAR.tsv"))
 
-    # Guardar CSVs legibles + gráfico
+    # Guardar CSV legible + gráfico
     exportar_pareto_y_variables_csv(non_dominated_solutions, output_dir)
     plot_pareto_front_3d(non_dominated_solutions, output_dir)
 
-    # Elegir mejor solución (cambia 'fitness' por 'rmsd' o 'energy' si prefieres)
+    # Elegir mejor solución
     best = elegir_mejor_solucion(non_dominated_solutions, prefer='rmsd')
 
-    # Obtener la secuencia de la mejor solución
+    # Obtener secuencia de la mejor solución
     attrs = getattr(best, "attributes", {}) or {}
     best_seq = attrs.get("sequence") or attrs.get("amino_sequence")
     if not best_seq:
-        # fallback: mapear desde variables (por si no quedó la secuencia en attrs)
         posiciones = [int(round(v)) for v in best.variables]
         best_seq = det_sec(posiciones, amino_seq)
 
@@ -408,42 +112,18 @@ def optimizar_plegamiento_proteina(
     except Exception as e:
         print(f"⚠️ No se pudo generar PDB con ESMFold: {e}")
 
-
-    # Mapear floats a aminoácidos usando det_sec
+    # Mapear floats a aminoácidos
     for sol in non_dominated_solutions:
-        posiciones = [int(round(v)) for v in sol.variables]  # convertir floats a enteros
+        posiciones = [int(round(v)) for v in sol.variables]
         sol.attributes['amino_sequence'] = det_sec(posiciones, amino_seq)
 
     return non_dominated_solutions, crear_estadisticas_detalladas(non_dominated_solutions, 0, max_evaluations, population_size)
 
-def elegir_mejor_solucion(solutions, prefer='fitness'):
-    """
-    prefer ∈ {'fitness', 'rmsd', 'energy'}:
-      - 'fitness': menor fitness_total
-      - 'rmsd'   : menor RMSD
-      - 'energy' : menor energy (Rosetta)
-    """
-    def attr(s, k, default=float('inf')):
-        return (getattr(s, "attributes", {}) or {}).get(k, default)
 
-    candidatas = [s for s in solutions if hasattr(s, "attributes")]
-    if not candidatas:
-        candidatas = solutions
-
-    if prefer == 'energy':
-        keyfn = lambda s: attr(s, 'design_energy')
-    elif prefer == 'rmsd':
-        keyfn = lambda s: attr(s, 'rmsd')
-    else:
-        keyfn = lambda s: attr(s, 'fitness_total')
-
-    return min(candidatas, key=keyfn)
-
+# Funciones auxiliares: guardar PDB, leer archivos, contar residuos, etc.
+# (copiar todas tus funciones de antes, pero eliminar PyRosetta)
 
 def guardar_pdb_con_esmfold(sequence: str, out_path: str, device: str = None, chunk_size: int = 64):
-    """
-    Genera un PDB con ESMFold desde 'sequence' y lo guarda en 'out_path'.
-    """
     import torch
     import esm
 
@@ -457,7 +137,6 @@ def guardar_pdb_con_esmfold(sequence: str, out_path: str, device: str = None, ch
     model = esm.pretrained.esmfold_v1()
     model = model.eval().to(device)
     try:
-        # para secuencias largas en CPU; para 24 aa no es crítico
         model.set_chunk_size(chunk_size)
     except Exception:
         pass
@@ -467,242 +146,3 @@ def guardar_pdb_con_esmfold(sequence: str, out_path: str, device: str = None, ch
     with open(out_path, "w") as f:
         f.write(pdb_str)
     return out_path
-
-
-def obtener_soluciones_del_algoritmo(algorithm):
-    """
-    Obtiene las soluciones del algoritmo NSGA-II de manera robusta,
-    compatible con diferentes versiones de jMetal.
-    
-    Args:
-        algorithm: Instancia del algoritmo NSGA-II ejecutado
-        
-    Returns:
-        List: Lista de soluciones encontradas por el algoritmo
-    """
-    # Intentar diferentes métodos según la versión de jMetal
-    methods_to_try = [
-        'get_result',      # Método más común en versiones recientes
-        'get_results',     # Variante con 's'
-        'result',          # Propiedad directa
-        'solutions',       # Otra propiedad posible
-        'population'       # En algunas versiones
-    ]
-    
-    for method_name in methods_to_try:
-        try:
-            if hasattr(algorithm, method_name):
-                method_or_attr = getattr(algorithm, method_name)
-                
-                # Si es un método (callable), llamarlo
-                if callable(method_or_attr):
-                    result = method_or_attr()
-                    if result is not None:
-                        return result
-                # Si es una propiedad, accederla directamente
-                else:
-                    if method_or_attr is not None:
-                        return method_or_attr
-        except Exception as e:
-            print(f"⚠️ Método {method_name} falló: {e}")
-            continue
-    
-    # Si ningún método funciona, intentar acceso directo a atributos internos
-    possible_attributes = ['_population', '_result', '_solutions', 'population_']
-    for attr_name in possible_attributes:
-        if hasattr(algorithm, attr_name):
-            try:
-                attr_value = getattr(algorithm, attr_name)
-                if attr_value is not None:
-                    return attr_value
-            except Exception:
-                continue
-    
-    raise AttributeError(
-        f"No se pudo obtener las soluciones del algoritmo. "
-        f"Métodos intentados: {methods_to_try}. "
-        f"Atributos disponibles: {[attr for attr in dir(algorithm) if not attr.startswith('__')]}"
-    )
-
-
-def mostrar_top_soluciones(solutions, top_n=5):
-    """
-    Muestra información de las mejores soluciones encontradas.
-    
-    Args:
-        solutions: Lista de soluciones no dominadas
-        top_n: Número de soluciones a mostrar
-    """
-    print(f"{'#':<3} {'RMSD':<8} {'GDT':<8} {'Energía':<10} {'TM-Score':<10} {'Fitness':<10}")
-    print("-" * 60)
-    
-    for i, solution in enumerate(solutions[:top_n]):
-        if hasattr(solution, 'attributes') and solution.attributes:
-            attrs = solution.attributes
-            
-            # Extraer valores con valores por defecto
-            rmsd = attrs.get('rmsd', 'N/A')
-            gdt = attrs.get('gdt', 'N/A')
-            energy = attrs.get('design_energy', 'N/A')
-            tms = attrs.get('tms_score', 'N/A')
-            fitness = attrs.get('fitness_total', 'N/A')
-            
-            # Formatear números
-            rmsd_str = f"{rmsd:.3f}" if isinstance(rmsd, (int, float)) else str(rmsd)
-            gdt_str = f"{gdt:.3f}" if isinstance(gdt, (int, float)) else str(gdt)
-            energy_str = f"{energy:.3f}" if isinstance(energy, (int, float)) else str(energy)
-            tms_str = f"{tms:.3f}" if isinstance(tms, (int, float)) else str(tms)
-            fitness_str = f"{fitness:.3f}" if isinstance(fitness, (int, float)) else str(fitness)
-            
-            print(f"{i+1:<3} {rmsd_str:<8} {gdt_str:<8} {energy_str:<10} {tms_str:<10} {fitness_str:<10}")
-        else:
-            # Si no hay atributos, mostrar solo los objetivos
-            obj_str = " ".join([f"{obj:.3f}" for obj in solution.objectives])
-            print(f"{i+1:<3} Objetivos: {obj_str}")
-
-
-def crear_estadisticas_detalladas(solutions: List, execution_time: float, 
-                                max_evaluations: int, population_size: int) -> dict:
-    """
-    Crea estadísticas detalladas de los resultados de la optimización.
-    
-    Args:
-        solutions: Lista de soluciones no dominadas
-        execution_time: Tiempo de ejecución en segundos
-        max_evaluations: Número máximo de evaluaciones
-        population_size: Tamaño de la población
-        
-    Returns:
-        dict: Diccionario con estadísticas detalladas
-    """
-    stats = {
-        'execution_time': execution_time,
-        'max_evaluations': max_evaluations,
-        'population_size': population_size,
-        'num_solutions': len(solutions),
-        'timestamp': datetime.datetime.now().isoformat()
-    }
-    
-    if solutions:
-        # Extraer métricas de fitness de las soluciones
-        fitness_values = []
-        rmsd_values = []
-        gdt_values = []
-        mc_similarity_values = []
-        tms_values = []
-        energy_values = []
-        
-        for sol in solutions:
-            if hasattr(sol, 'attributes') and sol.attributes:
-                attrs = sol.attributes
-                if 'fitness_total' in attrs:
-                    fitness_values.append(attrs['fitness_total'])
-                if 'rmsd' in attrs:
-                    rmsd_values.append(attrs['rmsd'])
-                if 'gdt' in attrs:
-                    gdt_values.append(attrs['gdt'])
-                if 'mc_similarity' in attrs:
-                    mc_similarity_values.append(attrs['mc_similarity'])
-                if 'tms_score' in attrs:
-                    tms_values.append(attrs['tms_score'])
-                if 'design_energy' in attrs:
-                    energy_values.append(attrs['design_energy'])
-        
-        # Calcular estadísticas para cada métrica
-        for metric_name, values in [
-            ('fitness', fitness_values),
-            ('rmsd', rmsd_values),
-            ('gdt', gdt_values),
-            ('mc_similarity', mc_similarity_values),
-            ('tms_score', tms_values),
-            ('design_energy', energy_values)
-        ]:
-            if values:
-                stats[f'{metric_name}_min'] = float(np.min(values))
-                stats[f'{metric_name}_max'] = float(np.max(values))
-                stats[f'{metric_name}_mean'] = float(np.mean(values))
-                stats[f'{metric_name}_std'] = float(np.std(values))
-                stats[f'{metric_name}_median'] = float(np.median(values))
-    
-    return stats
-
-
-def guardar_estadisticas(stats: dict, filename: str):
-    """
-    Guarda las estadísticas en un archivo de texto.
-    
-    Args:
-        stats: Diccionario con estadísticas
-        filename: Nombre del archivo donde guardar
-    """
-    with open(filename, 'w') as f:
-        f.write("ESTADÍSTICAS DE OPTIMIZACIÓN DE PLEGAMIENTO DE PROTEÍNAS\n")
-        f.write("="*60 + "\n\n")
-        
-        f.write("CONFIGURACIÓN:\n")
-        f.write(f"Tiempo de ejecución: {stats['execution_time']:.2f} segundos\n")
-        f.write(f"Máximo de evaluaciones: {stats['max_evaluations']}\n")
-        f.write(f"Tamaño de población: {stats['population_size']}\n")
-        f.write(f"Soluciones no dominadas: {stats['num_solutions']}\n")
-        f.write(f"Timestamp: {stats['timestamp']}\n\n")
-        
-        # Escribir estadísticas de métricas si están disponibles
-        metrics = ['fitness', 'rmsd', 'gdt', 'mc_similarity', 'tms_score', 'design_energy']
-        for metric in metrics:
-            if f'{metric}_min' in stats:
-                f.write(f"{metric.upper().replace('_', ' ')} ESTADÍSTICAS:\n")
-                f.write(f"  Mínimo: {stats[f'{metric}_min']:.6f}\n")
-                f.write(f"  Máximo: {stats[f'{metric}_max']:.6f}\n")
-                f.write(f"  Media: {stats[f'{metric}_mean']:.6f}\n")
-                f.write(f"  Desviación estándar: {stats[f'{metric}_std']:.6f}\n")
-                f.write(f"  Mediana: {stats[f'{metric}_median']:.6f}\n\n")
-
-
-def ejemplo_uso():
-    """
-    Función de ejemplo que muestra cómo usar la optimización.
-    """
-    print("Ejemplo de uso de la optimización de plegamiento de proteínas:")
-    print("\n# Uso básico:")
-    print("solutions, stats = optimizar_plegamiento_proteina('protein.pdb')")
-    
-    print("\n# Uso con parámetros personalizados:")
-    print("""solutions, stats = optimizar_plegamiento_proteina(
-    pdb_reference_file='protein.pdb',
-    max_evaluations=50000,
-    population_size=200,
-    use_physicochemical_descriptors=True,
-    crossover_probability=0.95,
-    mutation_probability=0.05,
-    output_dir='my_results'
-)""")
-
-
-def main():
-    """Función principal para ejecutar la optimización de plegamiento de proteínas."""
-    try:
-        # Ejecutar optimización con parámetros por defecto
-        solutions, stats = optimizar_plegamiento_proteina(
-            max_evaluations=1000,  # Reducido para pruebas rápidas
-            population_size=50,    # Reducido para pruebas rápidas
-            verbose=True
-        )
-        
-        return solutions, stats
-        
-    except Exception as e:
-        print(f"❌ Error durante la optimización: {e}")
-        import traceback
-        traceback.print_exc()
-        return None, None
-
-
-# Hacer disponibles las funciones principales al importar el módulo
-__all__ = [
-    'optimizar_plegamiento_proteina',
-    'contar_residuos',
-    'ProteinFoldingProblem',
-    'ejemplo_uso',
-    'main'
-]
-
