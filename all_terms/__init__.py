@@ -4,21 +4,22 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-# jMetal imports
-from jmetal.algorithm.multiobjective import NSGAII
-from jmetal.operator import SBXCrossover, PolynomialMutation
+# jMetalPy imports corregidos
+from jmetal.algorithm.multiobjective.nsgaii import NSGAII
+from jmetal.operator.crossover import SBXCrossover
+from jmetal.operator.mutation import PolynomialMutation
 from jmetal.util.termination_criterion import StoppingByEvaluations
 from jmetal.util.solution import get_non_dominated_solutions, print_function_values_to_file, print_variables_to_file
 
 # BioPython
 from Bio.PDB import PDBParser
 
-# Importar tus clases locales (asegúrate de que estén en la misma carpeta de Colab)
-from ProteinFoldingProblem import ProteinFoldingProblem
-from pdb_seq_tools import extract_amino_acid_sequence, det_sec, extract_backbone_atoms_str
-from Algorithm_evolutionary.algorithm_evolutionary import EDA_isla
+# Importar tus clases locales
+from .ProteinFoldingProblem import ProteinFoldingProblem
+from .pdb_seq_tools import extract_amino_acid_sequence, det_sec, extract_backbone_atoms_str
+from .Algorithm_evolutionary.algorithm_evolutionary import EDA_isla
 
-
+# --- Función principal de optimización ---
 def optimizar_plegamiento_proteina(
     pdb_reference_file: str = None,
     max_evaluations: int = 2500,
@@ -120,9 +121,7 @@ def optimizar_plegamiento_proteina(
     return non_dominated_solutions, crear_estadisticas_detalladas(non_dominated_solutions, 0, max_evaluations, population_size)
 
 
-# Funciones auxiliares: guardar PDB, leer archivos, contar residuos, etc.
-# (copiar todas tus funciones de antes, pero eliminar PyRosetta)
-
+# --- Función auxiliar para ESMFold ---
 def guardar_pdb_con_esmfold(sequence: str, out_path: str, device: str = None, chunk_size: int = 64):
     import torch
     import esm
@@ -146,3 +145,6 @@ def guardar_pdb_con_esmfold(sequence: str, out_path: str, device: str = None, ch
     with open(out_path, "w") as f:
         f.write(pdb_str)
     return out_path
+
+
+
