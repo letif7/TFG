@@ -25,7 +25,12 @@ def main():
         if solutions:
             print(f"\nOptimización completada exitosamente!")
             print(f"Se encontraron {len(solutions)} soluciones no dominadas")
-            print(f"Tiempo de ejecución: {stats.get('execution_time', 'N/A'):.2f} segundos")
+            exec_time = stats.get("execution_time", None)
+
+            if isinstance(exec_time, (int, float)):
+                print(f"Tiempo de ejecución: {exec_time:.2f} segundos")
+            else:
+                print(f"Tiempo de ejecución: {exec_time or 'N/A'} segundos")
 
            
         else:

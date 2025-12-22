@@ -3,6 +3,7 @@ import csv
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
+import esm
 
 # jMetalPy imports corregidos
 from jmetal.algorithm.multiobjective.nsgaii import NSGAII
@@ -15,7 +16,7 @@ from jmetal.util.solution import get_non_dominated_solutions, print_function_val
 from Bio.PDB import PDBParser
 
 # Importar tus clases locales
-from .ProteinFoldingProblem import ProteinFoldingProblem
+from .ProteinFoldingProblem.ProteinFoldingProblem import ProteinFoldingProblem
 from .pdb_seq_tools import extract_amino_acid_sequence, det_sec, extract_backbone_atoms_str
 from .Algorithm_evolutionary.algorithm_evolutionary import EDA_isla
 
@@ -78,7 +79,7 @@ def optimizar_plegamiento_proteina(
 
     algorithm.run()
 
-    solutions = obtener_soluciones_del_algoritmo(algorithm)
+    solutions = algorithm.result()
     non_dominated_solutions = get_non_dominated_solutions(solutions)
 
     # Mostrar resultados
@@ -145,6 +146,64 @@ def guardar_pdb_con_esmfold(sequence: str, out_path: str, device: str = None, ch
     with open(out_path, "w") as f:
         f.write(pdb_str)
     return out_path
+# ---------------------------------------------------------
+# FUNCIONES AUXILIARES PARA PDB
+# ---------------------------------------------------------
+def leer_archivo_pdb(pdb_path: str) -> str:
+    """
+    Lee un archivo PDB desde disco y devuelve su contenido como string.
+    """
+    if not os.path.exists(pdb_path):
+        raise FileNotFoundError(f"No se encontró el archivo PDB: {pdb_path}")
 
+    with open(pdb_path, "r") as f:
+        return f.read()
+
+
+def crear_estadisticas_detalladas(
+    solutions,
+    inicio_evaluaciones: int,
+    max_evaluations: int,
+    population_size: int
+):
+    """
+    Devuelve un diccionario con estadísticas básicas del frente de Pareto.
+    """
+    stats = {
+        "num_solutions": len(solutions),
+        "population_size": population_size,
+        "max_evaluations": max_evaluations,
+    }
+
+    if not solutions:
+        return stats
+
+    def collect_attr(key):
+        vals = []
+        for s in solutions:
+            attrs = getattr(s, "attributes", {}) or {}
+            v = attrs.get(key, None)
+            if isinstance(v, (int, float)):
+                vals.append(float(v))
+        return vals
+
+    for nombre, key in [
+        ("rmsd", "rmsd"),
+        ("gdt", "gdt"),
+        ("design_energy", "design_energy"),
+        ("tms_score", "tms_score"),
+        ("fitness_total", "fitness_total"),
+    ]:
+        vals = collect_attr(key)
+        if vals:
+            stats[f"{nombre}_min"] = float(np.min(vals))
+            stats[f"{nombre}_max"] = float(np.max(vals))
+            stats[f"{nombre}_mean"] = float(np.mean(vals))
+        else:
+            stats[f"{nombre}_min"] = None
+            stats[f"{nombre}_max"] = None
+            stats[f"{nombre}_mean"] = None
+
+    return stats
 
 

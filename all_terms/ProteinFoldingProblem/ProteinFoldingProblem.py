@@ -1,9 +1,11 @@
+import os
 import numpy as np
 import torch
 import logging
 from jmetal.core.problem import FloatProblem
 from jmetal.core.solution import FloatSolution
 from typing import List, Dict
+import esm
 
 from transformers import EsmTokenizer, EsmModel, EsmForProteinFolding
 from ..pdb_seq_tools.pdb_seq_tools import extract_amino_acid_sequence, extract_backbone_atoms_str
@@ -129,20 +131,40 @@ class ProteinFoldingProblem(FloatProblem):
     # ================================================
     # Energía simplificada
     # ================================================
-    def _calculate_design_energy(self, coords_3d: np.ndarray) -> float:
-        """Calcula energía de diseño simplificada basada en distancias consecutivas."""
-        if coords_3d.shape[0] < 2:
-            return 0.0
+    import numpy as np
+    import logging
 
+    def _calculate_design_energy(self, coords_3d) -> float:
+        """Calcula energía de diseño simplificada basada en distancias consecutivas."""
+
+        # asegurar que coords_3d sea un numpy array
+        coords_3d = np.asarray(coords_3d, dtype=float)
+
+        # validaciones básicas de forma
+        if coords_3d.ndim != 2 or coords_3d.shape[0] < 2 or coords_3d.shape[1] != 3:
+            logging.warning(
+                f"coords_3d inválido en _calculate_design_energy: shape={coords_3d.shape}"
+            )
+            # Devolvemos una energía muy alta para penalizar esta solución
+            return float("inf")
+
+        # logica original de energía
         distancias = np.linalg.norm(coords_3d[1:] - coords_3d[:-1], axis=1)
-        energia_corta = np.sum(np.where(distancias < 1.0, (1.0 - distancias)**2, 0))
-        energia_larga = np.sum(np.where(distancias > 5.0, (distancias - 5.0)**2, 0))
-        return energia_corta + energia_larga
+
+        energia_corta = np.sum(
+            np.where(distancias < 1.0, (1.0 - distancias) ** 2, 0.0)
+        )
+        energia_larga = np.sum(
+            np.where(distancias > 5.0, (distancias - 5.0) ** 2, 0.0)
+        )
+
+        return float(energia_corta + energia_larga)
+
 
 
     # ================================================
     # Evaluar solución NSGA-II
-    # ================================================
+    # =============🔹===================================
     def evaluate(self, solution: FloatSolution) -> FloatSolution:
         try:
             sequence = self.sequence_from_solution(solution)
@@ -206,8 +228,9 @@ class ProteinFoldingProblem(FloatProblem):
 
         except Exception as e:
             logging.error(f"Error evaluando: {e}")
-            solution.objectives = [float("inf")] * self._number_of_objectives
-            solution.attributes = {"sequence": sequence, "error": str(e)}
+            #solution.objectives = [float("inf")] * self._number_of_objectives
+            #solution.attributes = {"sequence": sequence, "error": str(e)}
+            raise
 
         return solution
 
@@ -240,3 +263,21 @@ class ProteinFoldingProblem(FloatProblem):
             "objectives": self._number_of_objectives,
             "aa_list": list(self.aa_to_num.keys())
         }
+
+        # ================================================
+    # Implementación requerida por jMetalPy (FloatProblem)
+    # ================================================
+    @property
+    def number_of_variables(self) -> int:
+        return self._number_of_variables
+
+    @property
+    def number_of_objectives(self) -> int:
+        return self._number_of_objectives
+
+    @property
+    def number_of_constraints(self) -> int:
+        return self._number_of_constraints
+
+    def name(self) -> str:
+        return "ProteinFoldingProblem"
