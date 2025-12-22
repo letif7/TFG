@@ -207,3 +207,139 @@ def crear_estadisticas_detalladas(
     return stats
 
 
+def mostrar_top_soluciones(solutions, top_n=5):
+    """
+    Muestra información de las mejores soluciones encontradas.
+    """
+    if not solutions:
+        print("⚠️ No hay soluciones para mostrar.")
+        return
+
+    top_n = min(top_n, len(solutions))
+
+    print(f"{'#':<3} {'RMSD':<8} {'GDT':<8} {'Energía':<10} {'TM-Score':<10} {'Fitness':<10}")
+    print("-" * 60)
+
+    for i, solution in enumerate(solutions[:top_n]):
+        attrs = getattr(solution, "attributes", {}) or {}
+
+        rmsd = attrs.get('rmsd', 'N/A')
+        gdt = attrs.get('gdt', 'N/A')
+        energy = attrs.get('design_energy', 'N/A')
+        tms = attrs.get('tms_score', 'N/A')
+        fitness = attrs.get('fitness_total', 'N/A')
+
+        def fmt(x):
+            return f"{x:.3f}" if isinstance(x, (int, float)) else str(x)
+
+        print(f"{i+1:<3} {fmt(rmsd):<8} {fmt(gdt):<8} {fmt(energy):<10} {fmt(tms):<10} {fmt(fitness):<10}")
+
+
+def exportar_pareto_y_variables_csv(solutions, output_dir, file_name="PARETO_DETALLADO.csv"):
+    """
+    Exporta las soluciones no dominadas a un CSV con
+    objetivos + algunos atributos útiles.
+    """
+    if not solutions:
+        return
+
+    os.makedirs(output_dir, exist_ok=True)
+    ruta = os.path.join(output_dir, file_name)
+
+    campos_base = ["index"]
+    # f0, f1, f2...
+    max_objs = max(len(sol.objectives) for sol in solutions)
+    campos_obj = [f"f{i}" for i in range(max_objs)]
+
+    # algunos atributos típicos:
+    campos_attr = [
+        "sequence",
+        "amino_sequence",
+        "rmsd",
+        "gdt",
+        "design_energy",
+        "tms_score",
+        "fitness_total",
+        "kl_divergence",
+    ]
+
+    fieldnames = campos_base + campos_obj + campos_attr
+
+    with open(ruta, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for idx, sol in enumerate(solutions):
+            row = {"index": idx}
+            # objetivos
+            for i, val in enumerate(sol.objectives):
+                row[f"f{i}"] = val
+            # atributos
+            attrs = getattr(sol, "attributes", {}) or {}
+            for k in campos_attr:
+                if k in attrs:
+                    row[k] = attrs[k]
+            writer.writerow(row)
+
+    print(f"CSV de Pareto detallado guardado en: {ruta}")
+
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401, necesario para proyección 3d
+
+def plot_pareto_front_3d(solutions, output_dir, file_name="PARETO_3D.png"):
+    """
+    Grafica el frente de Pareto (3 objetivos) en 3D.
+    Si no hay 3 objetivos, sale silenciosamente.
+    """
+    if not solutions:
+        return
+
+    num_objs = len(solutions[0].objectives)
+    if num_objs < 3:
+        print("⚠️ Menos de 3 objetivos, no se genera gráfico 3D.")
+        return
+
+    xs = [s.objectives[0] for s in solutions]
+    ys = [s.objectives[1] for s in solutions]
+    zs = [s.objectives[2] for s in solutions]
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+    ax.scatter(xs, ys, zs)
+
+    ax.set_xlabel("f0 (RMSD)")
+    ax.set_ylabel("f1 (-GDT)")
+    ax.set_zlabel("f2 (Energy)")
+
+    os.makedirs(output_dir, exist_ok=True)
+    ruta = os.path.join(output_dir, file_name)
+    fig.tight_layout()
+    fig.savefig(ruta, dpi=200)
+    plt.close(fig)
+
+    print(f"Gráfico 3D del frente de Pareto guardado en: {ruta}")
+
+
+def elegir_mejor_solucion(solutions, prefer='rmsd'):
+    """
+    Elige una solución de la frontera de Pareto según un criterio:
+    - 'rmsd': minimiza RMSD
+    - 'gdt': maximiza GDT
+    - 'energy' / 'energia': minimiza energía de diseño
+    - 'fitness': minimiza fitness_total (si lo tratás como coste)
+    """
+    if not solutions:
+        return None
+
+    def get_attr(sol, key, default):
+        attrs = getattr(sol, "attributes", {}) or {}
+        return attrs.get(key, default)
+
+    if prefer == 'gdt':
+        # GDT es métrica de calidad, cuanto más grande mejor
+        return max(solutions, key=lambda s: get_attr(s, 'gdt', float("-inf")))
+    elif prefer in ('energy', 'energia'):
+        return min(solutions, key=lambda s: get_attr(s, 'design_energy', float("inf")))
+    elif prefer == 'fitness':
+        return min(solutions, key=lambda s: get_attr(s, 'fitness_total', float("inf")))
+    else:  # 'rmsd' por defecto
+        return min(solutions, key=lambda s: get_attr(s, 'rmsd', float("inf")))
