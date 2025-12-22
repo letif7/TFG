@@ -1,6 +1,6 @@
 from .Algorithm_evolutionary.algorithm_evolutionary import EDA_tres_capas,EDA_isla
 import os
-import pyrosetta
+#import pyrosetta
 
 
 #archivos_en_bd_selected = archivos_en_bd_selected[0:1]

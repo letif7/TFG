@@ -9,7 +9,7 @@ from ..islas.islas import isla_15,inicializa_isla_16,isla_16,inicializa_isla_17,
 from ..islas.islas import isla_19,inicializa_isla_19,isla_20,inicializa_isla_20
 import os
 import copy
-import pyrosetta
+#import pyrosetta
 import numpy as np
 from transformers import EsmTokenizer, EsmModel
 import torch

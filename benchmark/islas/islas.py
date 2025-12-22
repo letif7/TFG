@@ -3,7 +3,7 @@ from ..pdb_seq_tools.pdb_seq_tools import extract_amino_acid_sequence_pdb,extrac
 from ..Fitness.fitness import descriptores,mapa_contacto,fitness_gdt_rmsd_mc_fisquim,fitness_gdt_rmsd_mc,agrega_rmsd_gdt_E_MC_divKl,agrega_rmsd_gdt_E_MC,ESM2_desc
 from ..EDA_tools.EDAtools import calcula_prob_tot, ejecuta_uno, filtro1,ordena_mejores_energia,W_act1,actualiza_individuo,ejecuta_uno_red
 from ..getDstructure.get_structure import _request_esmfold_prediction,parse_output,get_hash,genera
-import pyrosetta
+#import pyrosetta
 import numpy as np
 import random
 
