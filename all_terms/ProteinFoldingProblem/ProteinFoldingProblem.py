@@ -166,6 +166,22 @@ class ProteinFoldingProblem(FloatProblem):
 
         return float(energia_corta + energia_larga)
 
+    def _to_float(self, x, default=float("inf")):
+        import numpy as np
+        if x is None:
+            return float(default)
+        if isinstance(x, (int, float, np.floating)):
+            return float(x)
+        if isinstance(x, np.ndarray):
+            # si es array, intentamos convertir a escalar
+            if x.size == 1:
+                return float(x.item())
+            # si es vector, lo reducimos (ej. suma). Ajustá según tu métrica.
+            return float(np.sum(x))
+        if isinstance(x, (list, tuple)):
+            # si es lista, la reducimos
+            return float(np.sum(x))
+        return float(default)
 
 
     # ================================================
@@ -217,28 +233,28 @@ class ProteinFoldingProblem(FloatProblem):
 
             # Objetivos NSGA-II
             # 1. RMSD (min)
-            solution.objectives[0] = rms
+            solution.objectives[0] = self._to_float(rms)
 
             # 2. GDT (max → min)
-            solution.objectives[1] = -gdt
+            solution.objectives[1] = -self._to_float(gdt)
 
             # 3. Energía de diseño (min)
-            solution.objectives[2] = energia_design
+            solution.objectives[2] = self._to_float(energia_design)
 
             # 4. Mapa de contacto (max → min)
-            solution.objectives[3] = -MC_similitud
+            solution.objectives[3] = -self._to_float(MC_similitud)
 
             # 5. Divergencia KL fisicoquímica (min)
             if self.use_physicochemical_descriptors:
-                solution.objectives[4] = divKl
+                solution.objectives[4] = self._to_float(divKl)
             else:
                 solution.objectives[4] = 0.0  # o np.nan / penalización
 
             # 6. TM-score (max → min)
-            solution.objectives[5] = -tms
+            solution.objectives[5] = -self._to_float(tms)
 
             # 7. Distancias salinas / electrostáticas (min)
-            solution.objectives[6] = distancias_sal
+            solution.objectives[6] = self._to_float(distancias_sal)
 
             solution.attributes = {
                 "sequence": sequence,
