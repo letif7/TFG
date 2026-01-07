@@ -40,8 +40,8 @@ def generar_direcciones_referencia_uniformes(n_obj, n_points=300):
 # --- Función principal de optimización ---
 def optimizar_plegamiento_proteina(
     pdb_reference_file: str = None,
-    max_evaluations: int = 2500,
-    population_size: int = 100,
+    max_evaluations: int = 100,
+    population_size: int = 50,
     use_physicochemical_descriptors: bool = True,
     corte: list = [1.0, 2.0, 4.0, 8.0],
     energia_params: tuple = (-50.0, 10.0),

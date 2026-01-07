@@ -21,7 +21,7 @@ def main():
         # Ejecutar la optimización con parámetros por defecto
         solutions, stats = optimizar_plegamiento_proteina(
             pdb_reference_file=pdb_file,
-            max_evaluations=5000,  # pruebas
+            max_evaluations=100,  # pruebas
             verbose=True
         )
 
