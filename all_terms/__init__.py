@@ -14,6 +14,9 @@ from jmetal.util.solution import get_non_dominated_solutions, print_function_val
 # BioPython
 
 from Bio.PDB import PDBParser
+import warnings
+from Bio.PDB.PDBExceptions import PDBConstructionWarning
+warnings.simplefilter("ignore", PDBConstructionWarning)
 
 # Importar tus clases locales
 from .ProteinFoldingProblem.ProteinFoldingProblem import ProteinFoldingProblem
@@ -103,9 +106,27 @@ def optimizar_plegamiento_proteina(
     reference_directions=reference_directions
     )
 
-    algorithm.run()
+    # Observers (compatibilidad entre versiones)
+    try:
+        from jmetal.util.observer import BasicAlgorithmObserver
+    except ImportError:
+        from jmetal.component.observer import BasicAlgorithmObserver
+
+    basic = BasicAlgorithmObserver(frequency=1.0)
+    algorithm.observable.register(observer=basic)  # imprime evaluaciones/tiempo periódicamente
 
     solutions = algorithm.result()
+
+    # Validar que objectives son 7 floats
+    for i, s in enumerate(solutions):
+        if len(s.objectives) != num_objectives:
+            raise ValueError(f"Sol #{i}: len(objectives)={len(s.objectives)} != {num_objectives}")
+        for j, v in enumerate(s.objectives):
+            try:
+                float(v)
+            except Exception:
+                raise TypeError(f"Sol #{i} obj#{j} no convertible a float: {type(v)} -> {v}")
+
     non_dominated_solutions = get_non_dominated_solutions(solutions)
 
     # Mostrar resultados

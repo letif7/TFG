@@ -7,6 +7,10 @@ from ..Fitness.fitness import descriptores, mapa_contacto, fitness_gdt_rmsd_mc_f
 from ..pdb_seq_tools.pdb_seq_tools import extract_amino_acid_sequence_pdb, extract_backbone_atoms, det_sec, extract_backbone_atoms_str, extract_amino_acid_sequence
 from Bio.PDB import PDBParser
 import torch
+import warnings
+from Bio.PDB.PDBExceptions import PDBConstructionWarning
+warnings.simplefilter("ignore", PDBConstructionWarning)
+
 
 class ProteinSequenceSolution(Solution):
     """Solución personalizada para secuencias de proteínas."""
