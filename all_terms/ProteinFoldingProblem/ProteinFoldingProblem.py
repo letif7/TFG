@@ -1,4 +1,5 @@
 import os
+import time
 import numpy as np
 import torch
 import logging
@@ -171,6 +172,7 @@ class ProteinFoldingProblem(FloatProblem):
     # Evaluar solución NSGA-II
     # =============🔹===================================
     def evaluate(self, solution: FloatSolution) -> FloatSolution:
+        t0 = time.time()
         try:
             sequence = self.sequence_from_solution(solution)
             pdb_str, coords_3d = self.fold_sequence(sequence)
@@ -213,30 +215,30 @@ class ProteinFoldingProblem(FloatProblem):
                     self.energia_a, self.energia_b, tms
                 )
 
-                 # Objetivos NSGA-II
-                # 1. RMSD (min)
-                solution.objectives[0] = rms
+            # Objetivos NSGA-II
+            # 1. RMSD (min)
+            solution.objectives[0] = rms
 
-                # 2. GDT (max → min)
-                solution.objectives[1] = -gdt
+            # 2. GDT (max → min)
+            solution.objectives[1] = -gdt
 
-                # 3. Energía de diseño (min)
-                solution.objectives[2] = energia_design
+            # 3. Energía de diseño (min)
+            solution.objectives[2] = energia_design
 
-                # 4. Mapa de contacto (max → min)
-                solution.objectives[3] = -MC_similitud
+            # 4. Mapa de contacto (max → min)
+            solution.objectives[3] = -MC_similitud
 
-                # 5. Divergencia KL fisicoquímica (min)
-                if self.use_physicochemical_descriptors:
-                    solution.objectives[4] = divKl
-                else:
-                    solution.objectives[4] = 0.0  # o np.nan / penalización
+            # 5. Divergencia KL fisicoquímica (min)
+            if self.use_physicochemical_descriptors:
+                solution.objectives[4] = divKl
+            else:
+                solution.objectives[4] = 0.0  # o np.nan / penalización
 
-                # 6. TM-score (max → min)
-                solution.objectives[5] = -tms
+            # 6. TM-score (max → min)
+            solution.objectives[5] = -tms
 
-                # 7. Distancias salinas / electrostáticas (min)
-                solution.objectives[6] = distancias_sal
+            # 7. Distancias salinas / electrostáticas (min)
+            solution.objectives[6] = distancias_sal
 
             solution.attributes = {
                 "sequence": sequence,
@@ -256,7 +258,7 @@ class ProteinFoldingProblem(FloatProblem):
             #solution.objectives = [float("inf")] * self._number_of_objectives
             #solution.attributes = {"sequence": sequence, "error": str(e)}
             raise
-
+        print("eval_s:", round(time.time() - t0, 3))
         return solution
 
 

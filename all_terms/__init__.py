@@ -78,7 +78,7 @@ def optimizar_plegamiento_proteina(
 
     directions_list = generar_direcciones_referencia_uniformes(
     n_obj=num_objectives,
-    n_points=300  # o el número que quieras
+    n_points=population_size  # o el número que quieras
     )
     # Convertir a numpy array
     reference_directions = ReferenceDirectionsWrapper(
