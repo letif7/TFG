@@ -6,19 +6,32 @@ import numpy as np
 import esm
 
 # jMetalPy imports corregidos
-from jmetal.algorithm.multiobjective.nsgaii import NSGAII
+from jmetal.algorithm.multiobjective.nsgaiii import NSGAIII
 from jmetal.operator.crossover import SBXCrossover
 from jmetal.operator.mutation import PolynomialMutation
 from jmetal.util.termination_criterion import StoppingByEvaluations
 from jmetal.util.solution import get_non_dominated_solutions, print_function_values_to_file, print_variables_to_file
-
 # BioPython
+
 from Bio.PDB import PDBParser
 
 # Importar tus clases locales
 from .ProteinFoldingProblem.ProteinFoldingProblem import ProteinFoldingProblem
 from .pdb_seq_tools import extract_amino_acid_sequence, det_sec, extract_backbone_atoms_str
 from .Algorithm_evolutionary.algorithm_evolutionary import EDA_isla
+from .utils.ReferenceDirectionWrapper import ReferenceDirectionsWrapper
+
+def generar_direcciones_referencia_uniformes(n_obj, n_points=300):
+    """
+    Genera un set de reference directions para NSGA-III.
+    Cada vector se normaliza para que la suma sea 1.
+    """
+    dirs = []
+    for _ in range(n_points):
+        v = np.random.rand(n_obj)
+        v = v / np.sum(v)  # normalizar para que la suma sea 1
+        dirs.append(v.tolist())
+    return dirs
 
 # --- Función principal de optimización ---
 def optimizar_plegamiento_proteina(
@@ -61,20 +74,33 @@ def optimizar_plegamiento_proteina(
         corte=corte,
         energia_params=energia_params
     )
+    num_objectives = problem.number_of_objectives()  # = 7
+
+    directions_list = generar_direcciones_referencia_uniformes(
+    n_obj=num_objectives,
+    n_points=300  # o el número que quieras
+    )
+    # Convertir a numpy array
+    reference_directions = ReferenceDirectionsWrapper(
+    np.array(directions_list, dtype=float)
+    )
+
+    population_size = len(directions_list)
 
     # Operadores genéticos
     crossover = SBXCrossover(probability=crossover_probability, distribution_index=crossover_distribution_index)
-    mutation = PolynomialMutation(probability=mutation_probability / problem.number_of_variables,
-                                 distribution_index=mutation_distribution_index)
-
+    mutation = PolynomialMutation(
+    probability=1.0 / problem.number_of_variables,
+    distribution_index=mutation_distribution_index
+    )
     # Algoritmo NSGA-II
-    algorithm = NSGAII(
-        problem=problem,
-        population_size=population_size,
-        offspring_population_size=population_size,
-        mutation=mutation,
-        crossover=crossover,
-        termination_criterion=StoppingByEvaluations(max_evaluations)
+    algorithm = NSGAIII(
+    problem=problem,
+    population_size=population_size,
+    mutation=mutation,
+    crossover=crossover,
+    termination_criterion=StoppingByEvaluations(max_evaluations),
+    reference_directions=reference_directions
     )
 
     algorithm.run()

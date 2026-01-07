@@ -44,10 +44,12 @@ class ProteinFoldingProblem(FloatProblem):
 
         # Propiedades JMetalPy
         self._number_of_variables = sequence_length
-        self._number_of_objectives = 3
+        self._number_of_objectives = 7
         self._number_of_constraints = 0
         self._lower_bound = [0.0] * sequence_length
         self._upper_bound = [19.0] * sequence_length
+
+ 
 
         # Extrae referencia
         self._extract_reference_data()
@@ -63,6 +65,9 @@ class ProteinFoldingProblem(FloatProblem):
     # ================================================
     # Extracción de datos de PDB de referencia
     # ================================================
+    def number_of_objectives(self):
+            return self._number_of_objectives
+    
     def _extract_reference_data(self):
         try:
             if isinstance(self.pdb_reference, str) and os.path.exists(self.pdb_reference):
@@ -208,10 +213,30 @@ class ProteinFoldingProblem(FloatProblem):
                     self.energia_a, self.energia_b, tms
                 )
 
-            # Objetivos NSGA-II
-            solution.objectives[0] = rms
-            solution.objectives[1] = -gdt
-            solution.objectives[2] = energia_design
+                 # Objetivos NSGA-II
+                # 1. RMSD (min)
+                solution.objectives[0] = rms
+
+                # 2. GDT (max → min)
+                solution.objectives[1] = -gdt
+
+                # 3. Energía de diseño (min)
+                solution.objectives[2] = energia_design
+
+                # 4. Mapa de contacto (max → min)
+                solution.objectives[3] = -MC_similitud
+
+                # 5. Divergencia KL fisicoquímica (min)
+                if self.use_physicochemical_descriptors:
+                    solution.objectives[4] = divKl
+                else:
+                    solution.objectives[4] = 0.0  # o np.nan / penalización
+
+                # 6. TM-score (max → min)
+                solution.objectives[5] = -tms
+
+                # 7. Distancias salinas / electrostáticas (min)
+                solution.objectives[6] = distancias_sal
 
             solution.attributes = {
                 "sequence": sequence,
@@ -271,9 +296,7 @@ class ProteinFoldingProblem(FloatProblem):
     def number_of_variables(self) -> int:
         return self._number_of_variables
 
-    @property
-    def number_of_objectives(self) -> int:
-        return self._number_of_objectives
+    
 
     @property
     def number_of_constraints(self) -> int:
