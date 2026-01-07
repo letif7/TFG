@@ -11,6 +11,7 @@ from jmetal.operator.crossover import SBXCrossover
 from jmetal.operator.mutation import PolynomialMutation
 from jmetal.util.termination_criterion import StoppingByEvaluations
 from jmetal.util.solution import get_non_dominated_solutions, print_function_values_to_file, print_variables_to_file
+from jmetal.util.observer import ProgressBarObserver, PrintObjectivesObserver, BasicObserver
 # BioPython
 
 from Bio.PDB import PDBParser
@@ -106,15 +107,15 @@ def optimizar_plegamiento_proteina(
     reference_directions=reference_directions
     )
 
-    # Observers (compatibilidad entre versiones)
-    try:
-        from jmetal.util.observer import BasicAlgorithmObserver
-    except ImportError:
-        from jmetal.component.observer import BasicAlgorithmObserver
+    # Barra de progreso (tqdm) hasta max_evaluations
+    algorithm.observable.register(observer=ProgressBarObserver(max_evaluations))
 
-    basic = BasicAlgorithmObserver(frequency=1.0)
-    algorithm.observable.register(observer=basic)  # imprime evaluaciones/tiempo periódicamente
+    # Log cada N evaluaciones (elige uno)
+    algorithm.observable.register(observer=BasicObserver(frequency=10))
+    # o si solo querés imprimir fitness:
+    # algorithm.observable.register(observer=PrintObjectivesObserver(frequency=10))
 
+    algorithm.run()
     solutions = algorithm.result()
 
     # Validar que objectives son 7 floats
