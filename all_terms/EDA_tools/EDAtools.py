@@ -45,28 +45,92 @@ def similitud_MC(MC1,MC2):
         for j in range(i+1,len(MC1[i])):
             similitud+=(MC1[i][j]-MC2[i][j])**2
     return similitud/(len(MC1)*(len(MC1)+1)/2)
-               
+
+def rmsd_MC(MC1, MC2):
+    """
+    Calcula el RMSD entre dos mapas de contacto.
+    """
+
+    MC1 = np.array(MC1)
+    MC2 = np.array(MC2)
+    n = MC1.shape[0]
+
+    suma = 0.0
+    for i in range(n - 1):
+        for j in range(i + 1, n):
+            suma += (MC1[i, j] - MC2[i, j]) ** 2
+
+    return np.sqrt(suma / (n * (n - 1) / 2))
+
+def kl_divergence(P, Q, epsilon=1e-8):
+    """
+    Calcula la divergencia KL de P||Q.
+    Se agrega un epsilon para evitar log(0) o divisiones por cero.
+    """
+    P = np.array(P, dtype=np.float64) + epsilon
+    Q = np.array(Q, dtype=np.float64) + epsilon
+    P = P / np.sum(P)
+    Q = Q / np.sum(Q)
+    return entropy(P, Q)
+
+def jeffreys_distance(P, Q):
+    """
+    Calcula la distancia de Jeffreys entre P y Q
+    D_J(P||Q) = 0.5 * (KL(P||Q) + KL(Q||P))
+    """
+    return 0.5 * (kl_divergence(P, Q) + kl_divergence(Q, P))            
 
 "Determina la entropia si los datos son observaciones"
-def entropia_descrip_val(descriptor_ref, descriptor_temp,lugar):
-    data1=descriptor_ref[lugar]
-    data2=descriptor_temp[lugar]
-    prob1, _ = np.histogram(data1, bins=20, range=[min([min(data1),min(data2)]),max([max(data1),max(data2)])],density=False)
-    prob2, _ = np.histogram(data2, bins=20, range=[min([min(data1),min(data2)]),max([max(data1),max(data2)])],density=False)
-    prob1=[x + 0.5 for x in prob1]
-    prob2=[x + 0.5 for x in prob2]
-    kl_divergence = entropy(prob1, prob2)
-    return kl_divergence
+def entropia_descrip_val(descriptor_ref, descriptor_temp, lugar):
+    """
+    Calcula la distancia de Jeffreys para descriptores tipo observaciones (valores continuos)
+    """
+    data1 = descriptor_ref[lugar]
+    data2 = descriptor_temp[lugar]
+
+    # Crear histogramas discretos para aproximar distribuciones
+    bins = 20
+    min_val = min(min(data1), min(data2))
+    max_val = max(max(data1), max(data2))
+    prob1, _ = np.histogram(data1, bins=bins, range=(min_val, max_val), density=True)
+    prob2, _ = np.histogram(data2, bins=bins, range=(min_val, max_val), density=True)
+
+    return jeffreys_distance(prob1, prob2)
 
 "Determina la entropia si los datos son probabilidades"
-def entropia_descrip_prob(descriptor_ref, descriptor_temp,lugar):
-    data1=descriptor_ref[lugar]
-    data2=descriptor_temp[lugar]
-    data1=[x + 0.01 for x in data1]
-    data2=[x + 0.01 for x in data2]
-    kl_divergence = entropy(data1, data2)
-    return kl_divergence
+def entropia_descrip_prob(descriptor_ref, descriptor_temp, lugar):
+    """
+    Calcula la distancia de Jeffreys para descriptores tipo probabilidades
+    """
+    data1 = np.array(descriptor_ref[lugar], dtype=np.float64)
+    data2 = np.array(descriptor_temp[lugar], dtype=np.float64)
+    return jeffreys_distance(data1, data2)
 
+def calcular_divergencias(descriptor_ref, descriptor_temp):
+    """
+    Calcula la distancia de Jeffreys para todos los descriptores indicados
+    """
+    divKl = []
+
+    posi_observaciones = [1, 2, 5, 6, 7, 8, 9]
+    posi_prob = [0, 3, 4]
+
+    # Distancias para observaciones
+    for lugar in posi_observaciones:
+        divKl.append(entropia_descrip_val(descriptor_ref, descriptor_temp, lugar))
+
+    # Distancias para probabilidades
+    for lugar in posi_prob:
+        divKl.append(entropia_descrip_prob(descriptor_ref, descriptor_temp, lugar))
+
+    # Filtrar infinitos o NaNs
+    divKl = [x for x in divKl if np.isfinite(x)]
+
+    # Valor por defecto si no hay valores válidos
+    if not divKl:
+        divKl = [2.5]
+
+    return divKl
 
 "ordena de mayor a menor las variables que almacenan las n_best mejores ejecuciones "
 def ordena_mejores_energia(best_fitness, best_execution, pdb_select,best_fitness_energ,best_execution_dist):

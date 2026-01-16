@@ -2,13 +2,13 @@ import numpy as np
 import re
 from ..descproteins import GAAC,EGAAC,CKSAAGP,GDPC,GTPC,BLOSUM62,CTDC,CTDT,CTDD
 from Bio.SVDSuperimposer import SVDSuperimposer
-from ..EDA_tools.EDAtools import similitud_MC,entropia_descrip_val,entropia_descrip_prob
+from ..EDA_tools.EDAtools import similitud_MC,entropia_descrip_val,entropia_descrip_prob, rmsd_MC, calcular_divergencias
 from transformers import EsmTokenizer, EsmModel
 import torch
 
 
 "Mapas de contacto"
-def mapa_contacto(BB):
+def mapa_contacto_distancias(BB):
     BB_temp=BB[1::4]
     MC=[[0 for _ in range(len(BB_temp))]for _ in range(len(BB_temp)-1)]
     for i in range(len(BB_temp)-1):
@@ -16,6 +16,49 @@ def mapa_contacto(BB):
         MC[i][(i+1):]=temporal
     return MC
 
+def mapa_contacto_binario(MC_dist, umbral=8.0):
+    """
+    Convierte una matriz de distancias en un mapa de contacto binario.
+
+    Parámetros:
+    - MC_dist: matriz de distancias (triangular o completa)
+    - umbral: distancia máxima para considerar contacto (Å)
+
+    Retorna:
+    - matriz binaria de contactos (0 / 1)
+    """
+
+    MC_dist = np.array(MC_dist)
+    MC_contacto = (MC_dist <= umbral).astype(int)
+    return MC_contacto
+
+def tm_score(x, y):
+    """
+    Calcula el TM-score según Zhang & Skolnick (2004)
+    usando solo átomos Cα.
+    """
+
+    x = np.array(x)
+    y = np.array(y)
+
+    sup = SVDSuperimposer()
+    sup.set(x, y)
+    sup.run()
+    y_on_x = sup.get_transformed()
+
+    # Distancias Cα
+    distancias = np.linalg.norm(x - y_on_x, axis=1)
+    dist_ca = distancias[1::4]
+
+    n = len(dist_ca)
+
+    if n <= 15:
+        return 0.0  # definición estándar
+
+    d0 = 1.24 * ((n - 15) ** (1/3)) - 1.8
+
+    tm = np.sum(1.0 / (1.0 + (dist_ca / d0) ** 2)) / n
+    return tm
 
 def descriptores_seleccionados(secuencia,modelo):
     fastas = [['nombre',secuencia,'Chain','Chain']]
@@ -65,66 +108,78 @@ def descriptores(secuencia,tokenizer,model_ESM2):
 "determina las metricas utilizadas en el fitness"
 "se incluyen los descriptores fisico quimico"
 def fitness_gdt_rmsd_mc_fisquim(x,y,MC_BB,corte,descriptor_ref,descriptor_temp):
+        #rmsd
     x=np.array(x)
     y=np.array(y)
     sup = SVDSuperimposer()
     sup.set(x, y)
     sup.run()
     rms = sup.get_rms()
+
+    #gdt
     y_on_x = sup.get_transformed()
     distancias = np.linalg.norm(x - y_on_x, axis=1)
-    distancias_sal=list(distancias[1::4])
     distancias1=distancias
     gdt=0
     for i in range(len(corte)):
         gdt = gdt+np.count_nonzero(distancias1 <= corte[i])
     gdt=gdt/(len(corte)*len(distancias1))
-    temoral_MC=mapa_contacto(y)
-    MC_similitud=similitud_MC(MC_BB, temoral_MC)
-    divKl=[]
-    posi_observaciones=[1,2,5,6,7,8,9]
-    posi_prob=[0,3,4]
-    for lugar in posi_observaciones:
-        divKl.append(entropia_descrip_val(descriptor_ref, descriptor_temp, lugar))
-    for lugar in posi_prob:
-        divKl.append(entropia_descrip_prob(descriptor_ref, descriptor_temp, lugar))
-    divKl = [x for x in divKl if x != float('inf')]
-    if divKl==[]:divKl=2.5
-    n=len(distancias_sal)
-    distancias1=np.array(distancias_sal)
-    d0=1.24*((n-15)*(1/3))-1.8
-    distancias1=distancias1/d0
-    distancias1=distancias1**2+1
-    tms=np.sum(1/distancias1)/n
-    return rms, gdt, MC_similitud, divKl,distancias_sal,tms
+
+    #RMSD MC
+    mapa_distancias_MC = mapa_contacto_distancias(y)
+    mapa_binario_MC = mapa_contacto_binario(mapa_distancias_MC)
+    MC_similitud=rmsd_MC(MC_BB, mapa_binario_MC)
+
+
+    divKl = calcular_divergencias(descriptor_ref, descriptor_temp)
+
+    #tms
+    #n=len(distancias_sal)
+    #distancias1=np.array(distancias_sal)
+    #d0=1.24*((n-15)*(1/3))-1.8
+    #distancias1=distancias1/d0
+    #distancias1=distancias1**2+1
+    #tms=np.sum(1/distancias1)/n
+    tms = tm_score(x,y)
+
+    return rms, gdt, MC_similitud, divKl, tms
 
 
 "determina las metricas utilizadas en el fitness"
 "no se incluyen los descriptores fisico quimico"
 def fitness_gdt_rmsd_mc(x,y,MC_BB,corte):
+    #RMSD
     x=np.array(x)
     y=np.array(y)
     sup = SVDSuperimposer()
     sup.set(x, y)
     sup.run()
     rms = sup.get_rms()
+
+    #gdt
     y_on_x = sup.get_transformed()
     distancias = np.linalg.norm(x - y_on_x, axis=1)
-    distancias_sal=list(distancias[1::4])
     distancias1=distancias
     gdt=0
     for i in range(len(corte)):
         gdt = gdt+np.count_nonzero(distancias1 <= corte[i])
     gdt=gdt/(len(corte)*len(distancias1))
-    temoral_MC=mapa_contacto(y)
-    MC_similitud=similitud_MC(MC_BB, temoral_MC)
-    n=len(distancias_sal)
-    distancias1=np.array(distancias_sal)
-    d0=1.24*((n-15)**(1/3))-1.8
-    distancias1=distancias1/d0
-    distancias1=distancias1**2+1
-    tms=np.sum(1/distancias1)/n
-    return rms, gdt, MC_similitud,distancias_sal,tms
+
+    #RMSD MC
+    mapa_distancias_MC = mapa_contacto_distancias(y)
+    mapa_binario_MC = mapa_contacto_binario(mapa_distancias_MC)
+    MC_similitud=rmsd_MC(MC_BB, mapa_binario_MC)
+
+    #tms
+    # n=len(distancias_sal)
+    # distancias1=np.array(distancias_sal)
+    # d0=1.24*((n-15)**(1/3))-1.8
+    # distancias1=distancias1/d0
+    # distancias1=distancias1**2+1
+    # tms=np.sum(1/distancias1)/n
+    tms = tm_score(x,y)
+
+    return rms, gdt, MC_similitud, tms
 
 "agrega las metricas cuando se tienen descriptores"
 def agrega_rmsd_gdt_E_MC_divKl(MC_similitud,energia_desing,rms,gdt,divKl,a,b,tms):

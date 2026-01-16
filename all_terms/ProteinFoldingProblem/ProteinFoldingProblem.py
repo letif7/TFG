@@ -10,7 +10,7 @@ import esm
 
 from transformers import EsmTokenizer, EsmModel, EsmForProteinFolding
 from ..pdb_seq_tools.pdb_seq_tools import extract_amino_acid_sequence, extract_backbone_atoms_str
-from ..Fitness.fitness import descriptores, mapa_contacto, \
+from ..Fitness.fitness import descriptores, mapa_contacto_distancias, mapa_contacto_binario, \
     fitness_gdt_rmsd_mc_fisquim, fitness_gdt_rmsd_mc, \
     agrega_rmsd_gdt_E_MC_divKl, agrega_rmsd_gdt_E_MC
 
@@ -78,7 +78,9 @@ class ProteinFoldingProblem(FloatProblem):
 
             self.backbone_reference = extract_backbone_atoms_str(pdb_text)
             self.reference_sequence = extract_amino_acid_sequence(pdb_text)
-            self.MC_reference = mapa_contacto(self.backbone_reference)
+            self.MC_reference = mapa_contacto_distancias(self.backbone_reference)
+            self.mapa_binario_referencia_MC = mapa_contacto_binario(self.MC_reference)
+
 
             logging.info(f"Secuencia referencia: {self.reference_sequence}")
 
@@ -205,13 +207,13 @@ class ProteinFoldingProblem(FloatProblem):
                 if sequence in self.descriptor_cache:
                     descriptor_temp = self.descriptor_cache[sequence]
                 else:
-                    descriptor_temp = descriptores(sequence, self.tokenizer, self.model_ESM2)
+                    descriptor_temp = descriptores(sequence, self.tokenizer, self.model_ESM2) #obtiene una representacion estadistica de la secuencia y de eso deriva los rasgos fisico-quimicos/probabilisticos
                     self.descriptor_cache[sequence] = descriptor_temp
 
-                rms, gdt, MC_similitud, divKl, distancias_sal, tms = (
+                rms, gdt, MC_similitud, divKl, tms = (
                     fitness_gdt_rmsd_mc_fisquim(
                         self.backbone_reference, coords_3d,
-                        self.MC_reference, self.corte,
+                        self.mapa_binario_referencia_MC, self.corte,
                         self.descriptor_ref, descriptor_temp
                     )
                 )
@@ -220,10 +222,10 @@ class ProteinFoldingProblem(FloatProblem):
                     divKl, self.energia_a, self.energia_b, tms
                 )
             else:
-                rms, gdt, MC_similitud, distancias_sal, tms = (
+                rms, gdt, MC_similitud, tms = (
                     fitness_gdt_rmsd_mc(
                         self.backbone_reference, coords_3d,
-                        self.MC_reference, self.corte
+                        self.mapa_binario_referencia_MC, self.corte
                     )
                 )
                 fitness_total = agrega_rmsd_gdt_E_MC(
@@ -252,9 +254,6 @@ class ProteinFoldingProblem(FloatProblem):
 
             # 6. TM-score (max → min)
             solution.objectives[5] = -self._to_float(tms)
-
-            # 7. Distancias salinas / electrostáticas (min)
-            solution.objectives[6] = self._to_float(distancias_sal)
 
             solution.attributes = {
                 "sequence": sequence,
