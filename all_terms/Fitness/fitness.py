@@ -5,6 +5,31 @@ from Bio.SVDSuperimposer import SVDSuperimposer
 from ..EDA_tools.EDAtools import similitud_MC,entropia_descrip_val,entropia_descrip_prob, rmsd_MC, calcular_divergencias
 from transformers import EsmTokenizer, EsmModel
 import torch
+import pyrosetta
+from pyrosetta import rosetta
+
+#Esta funcion es para crear el tipo Pose, que neceista Rosetta para calcular la energía: 
+def _coords_to_pose(self, sequence, coords_3d):
+    pose = pyrosetta.Pose()
+    pyrosetta.pose_from_sequence(pose, sequence)
+
+    atom_idx = 0
+    for i in range(1, pose.total_residue() + 1):
+        for atom in ["N", "CA", "C"]:
+            x, y, z = coords_3d[atom_idx]
+            pose.residue(i).set_xyz(
+                atom,
+                pyrosetta.rosetta.numeric.xyzVector_double_t(x, y, z)
+            )
+            atom_idx += 1
+
+    return pose
+
+#y este es la funcion, que dado el Pose , calcula la energía
+def _calculate_design_energy(self, sequence, coords_3d):
+    pose = self._coords_to_pose(sequence, coords_3d)
+    energy = self.scorefxn(pose)
+    return float(energy)
 
 
 "Mapas de contacto"
@@ -107,7 +132,7 @@ def descriptores(secuencia,tokenizer,model_ESM2):
 
 "determina las metricas utilizadas en el fitness"
 "se incluyen los descriptores fisico quimico"
-def fitness_gdt_rmsd_mc_fisquim(x,y,MC_BB,corte,descriptor_ref,descriptor_temp):
+def fitness_gdt_rmsd_mc_fisquim(x,y,MC_BB,sequence,corte,descriptor_ref,descriptor_temp):
         #rmsd
     x=np.array(x)
     y=np.array(y)
@@ -142,12 +167,15 @@ def fitness_gdt_rmsd_mc_fisquim(x,y,MC_BB,corte,descriptor_ref,descriptor_temp):
     #tms=np.sum(1/distancias1)/n
     tms = tm_score(x,y)
 
-    return rms, gdt, MC_similitud, divKl, tms
+    #energia
+    energia_design = _calculate_design_energy(sequence,MC_BB)
+
+    return rms, gdt, MC_similitud, divKl, tms, energia_design
 
 
 "determina las metricas utilizadas en el fitness"
 "no se incluyen los descriptores fisico quimico"
-def fitness_gdt_rmsd_mc(x,y,MC_BB,corte):
+def fitness_gdt_rmsd_mc(x,y,MC_BB, sequence,corte):
     #RMSD
     x=np.array(x)
     y=np.array(y)
@@ -179,7 +207,10 @@ def fitness_gdt_rmsd_mc(x,y,MC_BB,corte):
     # tms=np.sum(1/distancias1)/n
     tms = tm_score(x,y)
 
-    return rms, gdt, MC_similitud, tms
+    #energia
+    energia_design = _calculate_design_energy(sequence,MC_BB)
+
+    return rms, gdt, MC_similitud, tms, energia_design
 
 "agrega las metricas cuando se tienen descriptores"
 def agrega_rmsd_gdt_E_MC_divKl(MC_similitud,energia_desing,rms,gdt,divKl,a,b,tms):

@@ -195,13 +195,6 @@ class ProteinFoldingProblem(FloatProblem):
             sequence = self.sequence_from_solution(solution)
             pdb_str, coords_3d = self.fold_sequence(sequence)
 
-            # Energía con cache
-            if sequence in self.energy_cache:
-                energia_design = self.energy_cache[sequence]
-            else:
-                energia_design = self._calculate_design_energy(coords_3d)
-                self.energy_cache[sequence] = energia_design
-
             # Descriptores físico-químicos
             if self.use_physicochemical_descriptors:
                 if sequence in self.descriptor_cache:
@@ -210,9 +203,9 @@ class ProteinFoldingProblem(FloatProblem):
                     descriptor_temp = descriptores(sequence, self.tokenizer, self.model_ESM2) #obtiene una representacion estadistica de la secuencia y de eso deriva los rasgos fisico-quimicos/probabilisticos
                     self.descriptor_cache[sequence] = descriptor_temp
 
-                rms, gdt, MC_similitud, divKl, tms = (
+                rms, gdt, MC_similitud, divKl, tms, energia_design = (
                     fitness_gdt_rmsd_mc_fisquim(
-                        self.backbone_reference, coords_3d,
+                        self.backbone_reference, coords_3d, sequence,
                         self.mapa_binario_referencia_MC, self.corte,
                         self.descriptor_ref, descriptor_temp
                     )
@@ -222,9 +215,9 @@ class ProteinFoldingProblem(FloatProblem):
                     divKl, self.energia_a, self.energia_b, tms
                 )
             else:
-                rms, gdt, MC_similitud, tms = (
+                rms, gdt, MC_similitud, tms, energia_design = (
                     fitness_gdt_rmsd_mc(
-                        self.backbone_reference, coords_3d,
+                        self.backbone_reference, coords_3d, sequence,
                         self.mapa_binario_referencia_MC, self.corte
                     )
                 )

@@ -4,6 +4,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import esm
+import pyrosetta
 
 # jMetalPy imports corregidos
 from jmetal.algorithm.multiobjective.nsgaiii import NSGAIII
@@ -52,7 +53,7 @@ def optimizar_plegamiento_proteina(
     output_dir: str = "results",
     verbose: bool = True
 ) -> tuple:
-
+    pyrosetta.init("-mute all")
     # Directorio de trabajo en Colab
     directorio_trabajo = os.getcwd()
 
