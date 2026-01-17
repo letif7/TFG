@@ -57,6 +57,15 @@ def mapa_contacto_binario(MC_dist, umbral=8.0):
     MC_contacto = (MC_dist <= umbral).astype(int)
     return MC_contacto
 
+"Mapas de contacto"
+def mapa_contacto(BB):
+    BB_temp=BB[1::4]
+    MC=[[0 for _ in range(len(BB_temp))]for _ in range(len(BB_temp)-1)]
+    for i in range(len(BB_temp)-1):
+        temporal= np.linalg.norm(BB_temp[(i+1):] - BB_temp[i], axis=1)
+        MC[i][(i+1):]=temporal
+    return MC
+
 def tm_score(x, y):
     """
     Calcula el TM-score según Zhang & Skolnick (2004)
