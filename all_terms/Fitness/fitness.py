@@ -9,7 +9,7 @@ import pyrosetta
 from pyrosetta import rosetta
 
 #Esta funcion es para crear el tipo Pose, que neceista Rosetta para calcular la energía: 
-def _coords_to_pose(self, sequence, coords_3d):
+def _coords_to_pose(sequence, coords_3d):
     pose = pyrosetta.Pose()
     pyrosetta.pose_from_sequence(pose, sequence)
 
@@ -26,9 +26,9 @@ def _coords_to_pose(self, sequence, coords_3d):
     return pose
 
 #y este es la funcion, que dado el Pose , calcula la energía
-def _calculate_design_energy(self, sequence, coords_3d):
-    pose = self._coords_to_pose(sequence, coords_3d)
-    energy = self.scorefxn(pose)
+def _calculate_design_energy(sequence, coords_3d):
+    pose = _coords_to_pose(sequence, coords_3d)
+    energy = pyrosetta.scorefxn(pose)
     return float(energy)
 
 
@@ -39,6 +39,7 @@ def mapa_contacto_distancias(BB):
     for i in range(len(BB_temp)-1):
         temporal= np.linalg.norm(BB_temp[(i+1):] - BB_temp[i], axis=1)
         MC[i][(i+1):]=temporal
+    print(MC)
     return MC
 
 def mapa_contacto_binario(MC_dist, umbral=8.0):
@@ -160,9 +161,13 @@ def fitness_gdt_rmsd_mc_fisquim(x,y,MC_BB,sequence,corte,descriptor_ref,descript
     gdt=gdt/(len(corte)*len(distancias1))
 
     #RMSD MC
-    mapa_distancias_MC = mapa_contacto_distancias(y)
-    mapa_binario_MC = mapa_contacto_binario(mapa_distancias_MC)
-    MC_similitud=rmsd_MC(MC_BB, mapa_binario_MC)
+    mapa_distancias_MC_Y = mapa_contacto_distancias(y)
+    mapa_binario_MC_Y = mapa_contacto_binario(mapa_distancias_MC_Y)
+
+    mapa_distancias_MC_X = mapa_contacto_distancias(x)
+    mapa_binario_MC_X = mapa_contacto_binario(mapa_distancias_MC_X)
+
+    MC_similitud=rmsd_MC(mapa_binario_MC_X, mapa_binario_MC_Y)
 
 
     divKl = calcular_divergencias(descriptor_ref, descriptor_temp)
