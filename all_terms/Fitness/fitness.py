@@ -10,16 +10,20 @@ from pyrosetta import rosetta
 
 #Esta funcion es para crear el tipo Pose, que neceista Rosetta para calcular la energía: 
 def _coords_to_pose(sequence, coords_3d):
-    pose = pyrosetta.Pose()
-    pyrosetta.pose_from_sequence(pose, sequence)
+    print("entro en coords to pose")
+    print(sequence)
+
+    pose = rosetta.core.pose.Pose()
+    pyrosetta.pose_from_sequence(pose, sequence, "fa_standard")  # <-- cambio real
 
     atom_idx = 0
     for i in range(1, pose.total_residue() + 1):
-        for atom in ["N", "CA", "C"]:
+        for atom in ["N", "CA", "C", "O"]:
             x, y, z = coords_3d[atom_idx]
-            pose.residue(i).set_xyz(
-                atom,
-                pyrosetta.rosetta.numeric.xyzVector_double_t(x, y, z)
+            atomno = pose.residue(i).atom_index(atom)
+            pose.set_xyz(
+                rosetta.core.id.AtomID(atomno, i),
+                rosetta.numeric.xyzVector_double_t(float(x), float(y), float(z))
             )
             atom_idx += 1
 
@@ -27,9 +31,11 @@ def _coords_to_pose(sequence, coords_3d):
 
 #y este es la funcion, que dado el Pose , calcula la energía
 def _calculate_design_energy(sequence, coords_3d):
+    print("sequence type:", type(sequence), "len:", len(sequence) if isinstance(sequence, str) else None)
+    print("coords type:", type(MC_BB), "shape:", getattr(MC_BB, "shape", None))
     pose = _coords_to_pose(sequence, coords_3d)
-    energy = pyrosetta.scorefxn(pose)
-    return float(energy)
+    _scorefxn = pyrosetta.get_fa_scorefxn()
+    return float(_scorefxn(pose))
 
 
 "Mapas de contacto"
@@ -39,7 +45,7 @@ def mapa_contacto_distancias(BB):
     for i in range(len(BB_temp)-1):
         temporal= np.linalg.norm(BB_temp[(i+1):] - BB_temp[i], axis=1)
         MC[i][(i+1):]=temporal
-    print(MC)
+    #print(MC)
     return MC
 
 def mapa_contacto_binario(MC_dist, umbral=8.0):
@@ -142,7 +148,7 @@ def descriptores(secuencia,tokenizer,model_ESM2):
 
 "determina las metricas utilizadas en el fitness"
 "se incluyen los descriptores fisico quimico"
-def fitness_gdt_rmsd_mc_fisquim(x,y,MC_BB,sequence,corte,descriptor_ref,descriptor_temp):
+def fitness_gdt_rmsd_mc_fisquim(x,y,sequence,MC_BB,corte,descriptor_ref,descriptor_temp):
         #rmsd
     x=np.array(x)
     y=np.array(y)
@@ -182,7 +188,7 @@ def fitness_gdt_rmsd_mc_fisquim(x,y,MC_BB,sequence,corte,descriptor_ref,descript
     tms = tm_score(x,y)
 
     #energia
-    energia_design = _calculate_design_energy(sequence,MC_BB)
+    energia_design = _calculate_design_energy(sequence,y)
 
     return rms, gdt, MC_similitud, divKl, tms, energia_design
 

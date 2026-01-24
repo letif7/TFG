@@ -52,10 +52,10 @@ def rmsd_MC(MC1, MC2):
     """
     #MC1 = np.array(MC1)
     #MC2 = np.array(MC2)
-    print("MC1")
-    print(MC1)
-    print("MC2")
-    print(MC2)
+    #print("MC1")
+    #print(MC1)
+    #print("MC2")
+    #print(MC2)
     n = MC1.shape[0]
 
     suma = 0.0

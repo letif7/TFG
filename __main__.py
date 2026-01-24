@@ -1,4 +1,5 @@
 import os
+import pyrosetta
 from .all_terms import optimizar_plegamiento_proteina  # sin el punto si estás ejecutando directamente
 
 def main():
@@ -17,7 +18,7 @@ def main():
         # Verificar que exista el archivo PDB
         if not os.path.exists(pdb_file):
             raise FileNotFoundError(f"No se encontró el archivo PDB: {pdb_file}")
-
+        pyrosetta.init("-mute all")
         # Ejecutar la optimización con parámetros por defecto
         solutions, stats = optimizar_plegamiento_proteina(
             pdb_reference_file=pdb_file,

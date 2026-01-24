@@ -53,7 +53,7 @@ def optimizar_plegamiento_proteina(
     output_dir: str = "results",
     verbose: bool = True
 ) -> tuple:
-    pyrosetta.init("-mute all")
+    
     # Directorio de trabajo en Colab
     directorio_trabajo = os.getcwd()
 
