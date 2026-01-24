@@ -7,35 +7,35 @@ from transformers import EsmTokenizer, EsmModel
 import torch
 import pyrosetta
 from pyrosetta import rosetta
+from pyrosetta.rosetta.core.pose import make_pose_from_sequence
+from pyrosetta.rosetta.numeric import xyzVector_double_t
+from pyrosetta.rosetta.core.id import AtomID
 
 #Esta funcion es para crear el tipo Pose, que neceista Rosetta para calcular la energía: 
 def _coords_to_pose(sequence, coords_3d):
-    print("entro en coords to pose")
-    print(sequence)
+    pose = pyrosetta.Pose()
 
-    pose = rosetta.core.pose.Pose()
-    pyrosetta.pose_from_sequence(pose, sequence, "fa_standard")  # <-- cambio real
+    # esto crea el pose desde la secuencia (fa_standard)
+    make_pose_from_sequence(pose, sequence, "fa_standard")
+
+    coords_3d = np.asarray(coords_3d, dtype=float)
+    assert coords_3d.shape == (len(sequence) * 4, 3)
 
     atom_idx = 0
     for i in range(1, pose.total_residue() + 1):
-        for atom in ["N", "CA", "C", "O"]:
+        for atom in ("N", "CA", "C", "O"):
             x, y, z = coords_3d[atom_idx]
             atomno = pose.residue(i).atom_index(atom)
-            pose.set_xyz(
-                rosetta.core.id.AtomID(atomno, i),
-                rosetta.numeric.xyzVector_double_t(float(x), float(y), float(z))
-            )
+            pose.set_xyz(AtomID(atomno, i), xyzVector_double_t(float(x), float(y), float(z)))
             atom_idx += 1
 
     return pose
 
 #y este es la funcion, que dado el Pose , calcula la energía
 def _calculate_design_energy(sequence, coords_3d):
-    print("sequence type:", type(sequence), "len:", len(sequence) if isinstance(sequence, str) else None)
-    print("coords type:", type(MC_BB), "shape:", getattr(MC_BB, "shape", None))
     pose = _coords_to_pose(sequence, coords_3d)
-    _scorefxn = pyrosetta.get_fa_scorefxn()
-    return float(_scorefxn(pose))
+    scorefxn = pyrosetta.get_fa_scorefxn()
+    return float(scorefxn(pose))
 
 
 "Mapas de contacto"
