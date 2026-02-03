@@ -45,7 +45,7 @@ class ProteinFoldingProblem(FloatProblem):
 
         # Propiedades JMetalPy
         self._number_of_variables = sequence_length
-        self._number_of_objectives = 7
+        self._number_of_objectives = 6
         self._number_of_constraints = 0
         self._lower_bound = [0.0] * sequence_length
         self._upper_bound = [19.0] * sequence_length
@@ -203,27 +203,27 @@ class ProteinFoldingProblem(FloatProblem):
                     descriptor_temp = descriptores(sequence, self.tokenizer, self.model_ESM2) #obtiene una representacion estadistica de la secuencia y de eso deriva los rasgos fisico-quimicos/probabilisticos
                     self.descriptor_cache[sequence] = descriptor_temp
 
-                rms, gdt, MC_similitud, divKl, tms, energia_design = (
+                rms, gdt, MC_similitud, divKl, tms, energia_design_a, energia_design_b = (
                     fitness_gdt_rmsd_mc_fisquim(
-                        self.backbone_reference, coords_3d, sequence,
+                        self.backbone_reference, coords_3d, sequence, self.reference_sequence ,
                         self.mapa_binario_referencia_MC, self.corte,
                         self.descriptor_ref, descriptor_temp
                     )
                 )
                 fitness_total = agrega_rmsd_gdt_E_MC_divKl(
-                    MC_similitud, energia_design, rms, gdt,
-                    divKl, self.energia_a, self.energia_b, tms
+                    MC_similitud,  rms, gdt,
+                    divKl, energia_design_a, energia_design_b,  tms
                 )
             else:
-                rms, gdt, MC_similitud, tms, energia_design = (
+                rms, gdt, MC_similitud, tms, energia_design_a, energia_design_b = (
                     fitness_gdt_rmsd_mc(
                         self.backbone_reference, coords_3d, sequence,
                         self.mapa_binario_referencia_MC, self.corte
                     )
                 )
                 fitness_total = agrega_rmsd_gdt_E_MC(
-                    MC_similitud, energia_design, rms, gdt,
-                    self.energia_a, self.energia_b, tms
+                    MC_similitud, rms, gdt,
+                    energia_design_a, energia_design_b , tms
                 )
 
             # Objetivos NSGA-II

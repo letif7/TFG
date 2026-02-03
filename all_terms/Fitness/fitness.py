@@ -10,6 +10,7 @@ from pyrosetta import rosetta
 from pyrosetta.rosetta.core.pose import make_pose_from_sequence
 from pyrosetta.rosetta.numeric import xyzVector_double_t
 from pyrosetta.rosetta.core.id import AtomID
+from pyrosetta import pose_from_sequence, get_fa_scorefxn
 
 #Esta funcion es para crear el tipo Pose, que neceista Rosetta para calcular la energía: 
 def _coords_to_pose(sequence, coords_3d):
@@ -32,10 +33,12 @@ def _coords_to_pose(sequence, coords_3d):
     return pose
 
 #y este es la funcion, que dado el Pose , calcula la energía
-def _calculate_design_energy(sequence, coords_3d):
-    pose = _coords_to_pose(sequence, coords_3d)
-    scorefxn = pyrosetta.get_fa_scorefxn()
-    return float(scorefxn(pose))
+def _calculate_design_energy(sequence):
+    pose = pose_from_sequence(sequence)
+    scorefxn = get_fa_scorefxn()   # score12 / ref2015
+    energia = scorefxn(pose)
+    print("Energía total:", energia)
+    return energia
 
 
 "Mapas de contacto"
@@ -148,7 +151,7 @@ def descriptores(secuencia,tokenizer,model_ESM2):
 
 "determina las metricas utilizadas en el fitness"
 "se incluyen los descriptores fisico quimico"
-def fitness_gdt_rmsd_mc_fisquim(x,y,sequence,MC_BB,corte,descriptor_ref,descriptor_temp):
+def fitness_gdt_rmsd_mc_fisquim(x,y,sequence_b, sequence_a,MC_BB,corte,descriptor_ref,descriptor_temp):
         #rmsd
     x=np.array(x)
     y=np.array(y)
@@ -188,9 +191,10 @@ def fitness_gdt_rmsd_mc_fisquim(x,y,sequence,MC_BB,corte,descriptor_ref,descript
     tms = tm_score(x,y)
 
     #energia
-    energia_design = _calculate_design_energy(sequence,y)
+    energia_design_a = _calculate_design_energy(sequence_a)
+    energia_design_b = _calculate_design_energy(sequence_b)
 
-    return rms, gdt, MC_similitud, divKl, tms, energia_design
+    return rms, gdt, MC_similitud, divKl, tms, energia_design_a, energia_design_b
 
 
 "determina las metricas utilizadas en el fitness"
@@ -228,16 +232,17 @@ def fitness_gdt_rmsd_mc(x,y,MC_BB, sequence,corte):
     tms = tm_score(x,y)
 
     #energia
-    energia_design = _calculate_design_energy(sequence,MC_BB)
+    energia_design_a = _calculate_design_energy(sequence) 
+    energia_design_b = _calculate_design_energy(sequence) #esta bien 
 
-    return rms, gdt, MC_similitud, tms, energia_design
+    return rms, gdt, MC_similitud, tms, energia_design_a, energia_design_b
 
 "agrega las metricas cuando se tienen descriptores"
-def agrega_rmsd_gdt_E_MC_divKl(MC_similitud,energia_desing,rms,gdt,divKl,a,b,tms):
+def agrega_rmsd_gdt_E_MC_divKl(MC_similitud,rms,gdt,divKl,energia_desing_a,energia_desing_b,tms):
     temporal_fitnes=(1/(1+rms))+gdt+(1/(1+MC_similitud))
-    return temporal_fitnes+ (temporal_fitnes/3)/(1+np.exp((energia_desing+a)/b))+1/(1+np.mean(divKl))
+    return temporal_fitnes+ (temporal_fitnes/3)/(1+np.exp((energia_desing_a+a)/b))+1/(1+np.mean(divKl))
 
 "agrega las metricas cuando no se tienen descriptores"
-def agrega_rmsd_gdt_E_MC(MC_similitud,energia_desing,rms,gdt,a,b,tms):
+def agrega_rmsd_gdt_E_MC(MC_similitud,rms,gdt,energia_desing_a,energia_desing_b,tms):
     temporal_fitnes=(1/(1+rms))+gdt+(1/(1+MC_similitud))+tms
-    return temporal_fitnes+ (temporal_fitnes/4)/(1+np.exp((energia_desing+a)/b))
+    return temporal_fitnes+ (temporal_fitnes/4)/(1+np.exp((energia_desing_a+a)/b))
