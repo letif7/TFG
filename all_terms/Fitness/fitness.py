@@ -240,14 +240,16 @@ def fitness_gdt_rmsd_mc(x,y,MC_BB, sequence,corte):
 "agrega las metricas cuando se tienen descriptores"
 def agrega_rmsd_gdt_E_MC_divKl(MC_similitud,rms,gdt,divKl,energia_desing_a,energia_desing_b,b,tms):
     f1=(1/(1+rms))+gdt+(1/(1+MC_similitud))+tms
-    f2=(f1/4)*(1+np.exp((energia_desing_a-energia_desing_b)/b))
+    diffE = abs(energia_desing_a-energia_desing_b)
+    f2=(f1/4)*(1+np.exp(-diffE/b))
     f3=f3_descriptores(divKl,2)
     return f1+f2+f3
 
 "agrega las metricas cuando no se tienen descriptores"
 def agrega_rmsd_gdt_E_MC(MC_similitud,rms,gdt,energia_desing_a,energia_desing_b,b,tms):
     f1=(1/(1+rms))+gdt+(1/(1+MC_similitud))+tms
-    f2=(f1/4)*(1+np.exp((energia_desing_a-energia_desing_b)/b))
+    diffE = abs(energia_desing_a-energia_desing_b)
+    f2=(f1/4)*(1+np.exp(-diffE/b))
     return f1+f2
 
 
