@@ -95,8 +95,8 @@ def optimizar_plegamiento_proteina(
     # Operadores genéticos
     crossover = SBXCrossover(probability=crossover_probability, distribution_index=crossover_distribution_index)
     mutation = PolynomialMutation(
-    probability=1.0 / problem.number_of_variables,
-    distribution_index=mutation_distribution_index
+        probability=1.0 / problem.number_of_variables,
+        distribution_index=mutation_distribution_index
     )
     # Algoritmo NSGA-II
     algorithm = NSGAIII(

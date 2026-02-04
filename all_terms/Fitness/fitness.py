@@ -238,11 +238,28 @@ def fitness_gdt_rmsd_mc(x,y,MC_BB, sequence,corte):
     return rms, gdt, MC_similitud, tms, energia_design_a, energia_design_b
 
 "agrega las metricas cuando se tienen descriptores"
-def agrega_rmsd_gdt_E_MC_divKl(MC_similitud,rms,gdt,divKl,energia_desing_a,energia_desing_b,tms):
-    temporal_fitnes=(1/(1+rms))+gdt+(1/(1+MC_similitud))
-    return temporal_fitnes+ (temporal_fitnes/3)/(1+np.exp((energia_desing_a+a)/b))+1/(1+np.mean(divKl))
+def agrega_rmsd_gdt_E_MC_divKl(MC_similitud,rms,gdt,divKl,energia_desing_a,energia_desing_b,b,tms):
+    f1=(1/(1+rms))+gdt+(1/(1+MC_similitud))+tms
+    f2=(f1/4)*(1+np.exp((energia_desing_a-energia_desing_b)/b))
+    f3=f3_descriptores(divKl,2)
+    return f1+f2+f3
 
 "agrega las metricas cuando no se tienen descriptores"
-def agrega_rmsd_gdt_E_MC(MC_similitud,rms,gdt,energia_desing_a,energia_desing_b,tms):
-    temporal_fitnes=(1/(1+rms))+gdt+(1/(1+MC_similitud))+tms
-    return temporal_fitnes+ (temporal_fitnes/4)/(1+np.exp((energia_desing_a+a)/b))
+def agrega_rmsd_gdt_E_MC(MC_similitud,rms,gdt,energia_desing_a,energia_desing_b,b,tms):
+    f1=(1/(1+rms))+gdt+(1/(1+MC_similitud))+tms
+    f2=(f1/4)*(1+np.exp((energia_desing_a-energia_desing_b)/b))
+    return f1+f2
+
+
+def f3_descriptores(divKl, delta=1.0):
+    divKl = np.asarray(divKl, dtype=float)
+    divKl = divKl[np.isfinite(divKl)]
+    if divKl.size == 0:
+        # si no hay valores válidos, aplicar por default
+        divKl = np.array([2.5], dtype=float)
+
+    m = divKl.size
+    mean_div = float(np.sum(divKl) / m)
+
+    f3 = (2.0 * delta) / (1.0 + mean_div)
+    return float(f3)

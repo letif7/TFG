@@ -212,7 +212,7 @@ class ProteinFoldingProblem(FloatProblem):
                 )
                 fitness_total = agrega_rmsd_gdt_E_MC_divKl(
                     MC_similitud,  rms, gdt,
-                    divKl, energia_design_a, energia_design_b,  tms
+                    divKl, energia_design_a, energia_design_b, 30, tms
                 )
             else:
                 rms, gdt, MC_similitud, tms, energia_design_a, energia_design_b = (
@@ -223,10 +223,10 @@ class ProteinFoldingProblem(FloatProblem):
                 )
                 fitness_total = agrega_rmsd_gdt_E_MC(
                     MC_similitud, rms, gdt,
-                    energia_design_a, energia_design_b , tms
+                    energia_design_a, energia_design_b, 30 , tms
                 )
 
-            # Objetivos NSGA-II
+            # Objetivos NSGA-III
             # 1. RMSD (min)
             solution.objectives[0] = self._to_float(rms)
 
@@ -234,7 +234,7 @@ class ProteinFoldingProblem(FloatProblem):
             solution.objectives[1] = -self._to_float(gdt)
 
             # 3. Energía de diseño (min)
-            solution.objectives[2] = self._to_float(energia_design)
+            solution.objectives[2] = self._to_float(energia_design_b)
 
             # 4. Mapa de contacto (max → min)
             solution.objectives[3] = -self._to_float(MC_similitud)
@@ -254,7 +254,7 @@ class ProteinFoldingProblem(FloatProblem):
                 "gdt": gdt,
                 "mc_similarity": MC_similitud,
                 "tms_score": tms,
-                "design_energy": energia_design,
+                "design_energy": energia_design_b,
                 "fitness_total": fitness_total,
                 "folded_coordinates": coords_3d
             }
