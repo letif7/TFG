@@ -45,7 +45,7 @@ class ProteinFoldingProblem(FloatProblem):
 
         # Propiedades JMetalPy
         self._number_of_variables = sequence_length
-        self._number_of_objectives = 6
+        self._number_of_objectives = 3
         self._number_of_constraints = 0
         self._lower_bound = [0.0] * sequence_length
         self._upper_bound = [19.0] * sequence_length
@@ -195,71 +195,45 @@ class ProteinFoldingProblem(FloatProblem):
             sequence = self.sequence_from_solution(solution)
             pdb_str, coords_3d = self.fold_sequence(sequence)
 
-            # Descriptores físico-químicos
-            if self.use_physicochemical_descriptors:
-                if sequence in self.descriptor_cache:
-                    descriptor_temp = self.descriptor_cache[sequence]
-                else:
-                    descriptor_temp = descriptores(sequence, self.tokenizer, self.model_ESM2) #obtiene una representacion estadistica de la secuencia y de eso deriva los rasgos fisico-quimicos/probabilisticos
-                    self.descriptor_cache[sequence] = descriptor_temp
 
-                rms, gdt, MC_similitud, divKl, tms, energia_design_a, energia_design_b = (
-                    fitness_gdt_rmsd_mc_fisquim(
-                        self.backbone_reference, coords_3d, sequence, self.reference_sequence ,
-                        self.mapa_binario_referencia_MC, self.corte,
-                        self.descriptor_ref, descriptor_temp
-                    )
-                )
-                fitness_total = agrega_rmsd_gdt_E_MC_divKl(
-                    MC_similitud,  rms, gdt,
-                    divKl, energia_design_a, energia_design_b, 30, tms
-                )
+            if sequence in self.descriptor_cache:
+                descriptor_temp = self.descriptor_cache[sequence]
             else:
-                rms, gdt, MC_similitud, tms, energia_design_a, energia_design_b = (
-                    fitness_gdt_rmsd_mc(
-                        self.backbone_reference, coords_3d, sequence,
-                        self.mapa_binario_referencia_MC, self.corte
-                    )
+                descriptor_temp = descriptores(sequence, self.tokenizer, self.model_ESM2) #obtiene una representacion estadistica de la secuencia y de eso deriva los rasgos fisico-quimicos/probabilisticos
+                self.descriptor_cache[sequence] = descriptor_temp
+
+            rms, gdt, MC_similitud, divKl, tms, energia_design_a, energia_design_b = (
+                fitness_gdt_rmsd_mc_fisquim(
+                    self.backbone_reference, coords_3d, sequence, self.reference_sequence ,
+                    self.mapa_binario_referencia_MC, self.corte,
+                    self.descriptor_ref, descriptor_temp
                 )
-                fitness_total = agrega_rmsd_gdt_E_MC(
-                    MC_similitud, rms, gdt,
-                    energia_design_a, energia_design_b, 30 , tms
-                )
+            )
+            f1, f2, f3 = agrega_rmsd_gdt_E_MC_divKl(
+                MC_similitud,  rms, gdt,
+                divKl, energia_design_a, energia_design_b, 30, tms
+            )
+            
 
-            # Objetivos NSGA-III
-            # 1. RMSD (min)
-            solution.objectives[0] = self._to_float(rms)
+            # Objetivos NSGA-II
+            solution.objectives[0] = self._to_float(f1)
 
-            # 2. GDT (max → min)
-            solution.objectives[1] = -self._to_float(gdt)
+            solution.objectives[1] = -self._to_float(f2)
 
-            # 3. Energía de diseño (min)
-            solution.objectives[2] = self._to_float(energia_design_b)
-
-            # 4. Mapa de contacto (max → min)
-            solution.objectives[3] = -self._to_float(MC_similitud)
-
-            # 5. Divergencia KL fisicoquímica (min)
-            if self.use_physicochemical_descriptors:
-                solution.objectives[4] = self._to_float(divKl)
-            else:
-                solution.objectives[4] = 0.0  # o np.nan / penalización
-
-            # 6. TM-score (max → min)
-            solution.objectives[5] = -self._to_float(tms)
+            solution.objectives[2] = self._to_float(f3)
 
             solution.attributes = {
+                "f1": f1,
+                "f2": f2,
+                "f3": f3,
                 "sequence": sequence,
                 "rmsd": rms,
                 "gdt": gdt,
                 "mc_similarity": MC_similitud,
                 "tms_score": tms,
                 "design_energy": energia_design_b,
-                "fitness_total": fitness_total,
                 "folded_coordinates": coords_3d
             }
-            if self.use_physicochemical_descriptors:
-                solution.attributes["kl_divergence"] = divKl
 
         except Exception as e:
             logging.error(f"Error evaluando: {e}")
