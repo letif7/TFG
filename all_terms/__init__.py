@@ -29,7 +29,7 @@ from .Algorithm_evolutionary.algorithm_evolutionary import EDA_isla
 def optimizar_plegamiento_proteina(
     pdb_reference_file: str = None,
     max_evaluations: int = 100,
-    population_size: int = 50,
+    population_size: int = 100,
     use_physicochemical_descriptors: bool = True,
     corte: list = [1.0, 2.0, 4.0, 8.0],
     energia_params: tuple = (-50.0, 10.0),

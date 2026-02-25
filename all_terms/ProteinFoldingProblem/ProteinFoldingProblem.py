@@ -218,7 +218,7 @@ class ProteinFoldingProblem(FloatProblem):
             # Objetivos NSGA-II
             solution.objectives[0] = self._to_float(f1)
 
-            solution.objectives[1] = -self._to_float(f2)
+            solution.objectives[1] = self._to_float(f2)
 
             solution.objectives[2] = self._to_float(f3)
 
