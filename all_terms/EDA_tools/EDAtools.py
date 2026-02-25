@@ -131,9 +131,11 @@ def calcular_divergencias(descriptor_ref, descriptor_temp):
 
     # Valor por defecto si no hay valores válidos
     if not divKl:
-        divKl = [2.5]
+        KL_total = 2.5
+    else:
+        KL_total = sum(divKl)
 
-    return divKl
+    return KL_total
 
 "ordena de mayor a menor las variables que almacenan las n_best mejores ejecuciones "
 def ordena_mejores_energia(best_fitness, best_execution, pdb_select,best_fitness_energ,best_execution_dist):
