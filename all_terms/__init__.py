@@ -77,6 +77,7 @@ def optimizar_plegamiento_proteina(
     algorithm = NSGAII(
     problem=problem,
     population_size=population_size,
+    offspring_population_size=population_size,
     mutation=mutation,
     crossover=crossover,
     termination_criterion=StoppingByEvaluations(max_evaluations)
