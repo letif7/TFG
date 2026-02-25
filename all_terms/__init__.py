@@ -7,7 +7,7 @@ import esm
 import pyrosetta
 
 # jMetalPy imports corregidos
-from jmetal.algorithm.multiobjective.nsgaiii import NSGAIII
+from jmetal.algorithm.multiobjective.nsgaii import NSGAII
 from jmetal.operator.crossover import SBXCrossover
 from jmetal.operator.mutation import PolynomialMutation
 from jmetal.util.termination_criterion import StoppingByEvaluations
@@ -24,19 +24,6 @@ warnings.simplefilter("ignore", PDBConstructionWarning)
 from .ProteinFoldingProblem.ProteinFoldingProblem import ProteinFoldingProblem
 from .pdb_seq_tools import extract_amino_acid_sequence, det_sec, extract_backbone_atoms_str
 from .Algorithm_evolutionary.algorithm_evolutionary import EDA_isla
-from .utils.ReferenceDirectionWrapper import ReferenceDirectionsWrapper
-
-def generar_direcciones_referencia_uniformes(n_obj, n_points=300):
-    """
-    Genera un set de reference directions para NSGA-III.
-    Cada vector se normaliza para que la suma sea 1.
-    """
-    dirs = []
-    for _ in range(n_points):
-        v = np.random.rand(n_obj)
-        v = v / np.sum(v)  # normalizar para que la suma sea 1
-        dirs.append(v.tolist())
-    return dirs
 
 # --- Función principal de optimización ---
 def optimizar_plegamiento_proteina(
@@ -46,8 +33,8 @@ def optimizar_plegamiento_proteina(
     use_physicochemical_descriptors: bool = True,
     corte: list = [1.0, 2.0, 4.0, 8.0],
     energia_params: tuple = (-50.0, 10.0),
-    crossover_probability: float = 0.9,
-    mutation_probability: float = 0.1,
+    crossover_probability: float = 1,
+    mutation_probability: float = 0.05,
     crossover_distribution_index: float = 20.0,
     mutation_distribution_index: float = 20.0,
     output_dir: str = "results",
@@ -79,33 +66,20 @@ def optimizar_plegamiento_proteina(
         corte=corte,
         energia_params=energia_params
     )
-    num_objectives = problem.number_of_objectives()  # = 7
+    num_objectives = problem.number_of_objectives()  # = 3
 
-    directions_list = generar_direcciones_referencia_uniformes(
-    n_obj=num_objectives,
-    n_points=population_size  # o el número que quieras
-    )
-    # Convertir a numpy array
-    reference_directions = ReferenceDirectionsWrapper(
-    np.array(directions_list, dtype=float)
-    )
-
-    population_size = len(directions_list)
 
     # Operadores genéticos
     crossover = SBXCrossover(probability=crossover_probability, distribution_index=crossover_distribution_index)
-    mutation = PolynomialMutation(
-        probability=1.0 / problem.number_of_variables,
-        distribution_index=mutation_distribution_index
-    )
+    mutation = PolynomialMutation(probability=mutation_probability, distribution_index=mutation_distribution_index)
+
     # Algoritmo NSGA-II
-    algorithm = NSGAIII(
+    algorithm = NSGAII(
     problem=problem,
     population_size=population_size,
     mutation=mutation,
     crossover=crossover,
-    termination_criterion=StoppingByEvaluations(max_evaluations),
-    reference_directions=reference_directions
+    termination_criterion=StoppingByEvaluations(max_evaluations)
     )
 
     # Barra de progreso (tqdm) hasta max_evaluations
