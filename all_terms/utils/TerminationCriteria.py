@@ -55,23 +55,16 @@ class StoppingByDiversity(TerminationCriterion):
         return self.counter >= self.patience
 
 
-class CombinedTermination:
+class CombinedTermination(TerminationCriterion):
 
     def __init__(self, terminations):
+        super().__init__()
         self.terminations = terminations
 
-    def update(self, **kwargs):
-        """
-        jMetalPy pasa datos como:
-        PROBLEM, ALGORITHM, EVALUATIONS, TIME, etc.
-        """
-        algorithm = kwargs.get("algorithm")
-
-        if algorithm is None:
-            raise ValueError("ALGORITHM no fue recibido en kwargs")
-
+    def update(self, algorithm):
         for term in self.terminations:
             term.update(algorithm)
 
+    @property
     def is_met(self):
-        return any(term.is_met() for term in self.terminations)
+        return any(term.is_met for term in self.terminations)
