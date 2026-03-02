@@ -56,17 +56,22 @@ class StoppingByDiversity(TerminationCriterion):
 
 
 class CombinedTermination:
+
     def __init__(self, terminations):
         self.terminations = terminations
 
     def update(self, **kwargs):
         """
-        Propaga la actualización a cada criterio de parada.
-        kwargs incluirá:
-            PROBLEM, ALGORITHM, EVALUATIONS, TIME, etc.
+        jMetalPy pasa datos como:
+        PROBLEM, ALGORITHM, EVALUATIONS, TIME, etc.
         """
-        for term in self.terminations:
-            term.update(**kwargs)  # nunca llamar sin argumentos
+        algorithm = kwargs.get("ALGORITHM")
 
-    def is_terminated(self):
-        return any(term.is_terminated() for term in self.terminations)
+        if algorithm is None:
+            raise ValueError("ALGORITHM no fue recibido en kwargs")
+
+        for term in self.terminations:
+            term.update(algorithm)
+
+    def is_met(self):
+        return any(term.is_met() for term in self.terminations)
