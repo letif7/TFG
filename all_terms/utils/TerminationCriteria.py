@@ -55,15 +55,18 @@ class StoppingByDiversity(TerminationCriterion):
         return self.counter >= self.patience
 
 
+from jmetal.util.termination_criterion import TerminationCriterion
+
 class CombinedTermination(TerminationCriterion):
 
     def __init__(self, terminations):
         super().__init__()
         self.terminations = terminations
 
-    def update(self, algorithm):
+    def update(self, *args, **kwargs):
+        # Simplemente reenviamos TODO
         for term in self.terminations:
-            term.update(algorithm)
+            term.update(*args, **kwargs)
 
     @property
     def is_met(self):
