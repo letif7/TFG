@@ -56,21 +56,17 @@ class StoppingByDiversity(TerminationCriterion):
 
 
 class CombinedTermination:
-    def __init__(self, terminations):
-        """
-        terminations: lista de criterios de parada (StoppingByTime, StoppingByDiversity, etc.)
-        """
+    def _init_(self, terminations):
         self.terminations = terminations
 
     def update(self, **kwargs):
-        """Propaga la actualización a cada criterio"""
+        """
+        Propaga la actualización a cada criterio de parada.
+        kwargs incluirá:
+            PROBLEM, ALGORITHM, EVALUATIONS, TIME, etc.
+        """
         for term in self.terminations:
-            # Algunos criterios aceptan **kwargs, otros podrían solo recibir args
-            try:
-                term.update(**kwargs)
-            except TypeError:
-                term.update()
+            term.update(**kwargs)  # nunca llamar sin argumentos
 
     def is_terminated(self):
-        """Retorna True si cualquiera de los criterios indica terminación"""
         return any(term.is_terminated() for term in self.terminations)
