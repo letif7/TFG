@@ -56,7 +56,7 @@ class StoppingByDiversity(TerminationCriterion):
 
 
 class CombinedTermination:
-    def _init_(self, terminations):
+    def __init__(self, terminations):
         self.terminations = terminations
 
     def update(self, **kwargs):
