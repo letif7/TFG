@@ -1,7 +1,7 @@
 import time
 import numpy as np
 from jmetal.util.termination_criterion import TerminationCriterion
-from .pdb_seq_tools import det_sec
+from ..pdb_seq_tools import det_sec
 from ..diversity_tools import population_diversity_blosum62
 
 
