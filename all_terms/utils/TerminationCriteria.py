@@ -55,16 +55,15 @@ class StoppingByDiversity(TerminationCriterion):
         return self.counter >= self.patience
 
 
-class CombinedTermination(TerminationCriterion):
+class CombinedTermination:
+    def _init_(self, terminations):
+        self.terminations = terminations
 
-    def __init__(self, criteria):
-        super().__init__()
-        self.criteria = criteria
+    def update(self, **kwargs):
+        # Propagar update a todos los criterios internos
+        for term in self.terminations:
+            term.update(**kwargs)
 
-    def update(self, algorithm):
-        for c in self.criteria:
-            c.update(algorithm)
-
-    @property
-    def is_met(self):
-        return any(c.is_met for c in self.criteria)
+    def is_terminated(self):
+        # Retorna True si *cualquiera* o *todos* los criterios internos indican parada
+        return any(term.is_terminated() for term in self.terminations)
