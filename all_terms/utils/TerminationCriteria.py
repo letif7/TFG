@@ -65,7 +65,7 @@ class CombinedTermination:
         jMetalPy pasa datos como:
         PROBLEM, ALGORITHM, EVALUATIONS, TIME, etc.
         """
-        algorithm = kwargs.get("ALGORITHM")
+        algorithm = kwargs.get("algorithm")
 
         if algorithm is None:
             raise ValueError("ALGORITHM no fue recibido en kwargs")
