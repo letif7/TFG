@@ -56,7 +56,7 @@ class StoppingByDiversity(TerminationCriterion):
 
 
 class CombinedTermination:
-    def _init_(self, terminations):
+    def __init__(self, terminations):
         """
         terminations: lista de criterios de parada (StoppingByTime, StoppingByDiversity, etc.)
         """
