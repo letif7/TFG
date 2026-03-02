@@ -25,6 +25,12 @@ from .ProteinFoldingProblem.ProteinFoldingProblem import ProteinFoldingProblem
 from .pdb_seq_tools import extract_amino_acid_sequence, det_sec, extract_backbone_atoms_str
 from .Algorithm_evolutionary.algorithm_evolutionary import EDA_isla
 
+from .utils import (
+    StoppingByTime,
+    StoppingByDiversity,
+    CombinedTermination
+)
+
 # --- Función principal de optimización ---
 def optimizar_plegamiento_proteina(
     pdb_reference_file: str = None,
@@ -72,16 +78,34 @@ def optimizar_plegamiento_proteina(
     # Operadores genéticos
     crossover = SBXCrossover(probability=crossover_probability, distribution_index=crossover_distribution_index)
     mutation = PolynomialMutation(probability=mutation_probability, distribution_index=mutation_distribution_index)
-
-    # Algoritmo NSGA-II
-    algorithm = NSGAII(
-    problem=problem,
-    population_size=population_size,
-    offspring_population_size=population_size,
-    mutation=mutation,
-    crossover=crossover,
-    termination_criterion=StoppingByEvaluations(max_evaluations)
+    # --- Criterio 1: límite de 24 horas ---
+    termination_time = StoppingByTime(
+        max_seconds=24 * 60 * 60
     )
+
+    # --- Criterio 2: convergencia por diversidad ---
+    termination_div = StoppingByDiversity(
+        min_diversity=0.12,      # ajustar experimentalmente
+        patience=25,             # generaciones consecutivas
+        amino_seq_ref=amino_seq
+    )
+
+    # --- Criterio combinado ---
+    termination = CombinedTermination([
+        termination_time,
+        termination_div
+    ])
+
+# --- Algoritmo NSGA-II ---
+    algorithm = NSGAII(
+        problem=problem,
+        population_size=population_size,
+        offspring_population_size=population_size,
+        mutation=mutation,
+        crossover=crossover,
+        termination_criterion=termination
+    )
+   
 
     # Barra de progreso (tqdm) hasta max_evaluations
     algorithm.observable.register(observer=ProgressBarObserver(max_evaluations))
