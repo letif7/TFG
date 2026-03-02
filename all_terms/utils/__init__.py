@@ -1,4 +1,4 @@
-from ..TerminationCriteria import (
+from .TerminationCriteria import (
     StoppingByTime,
     StoppingByDiversity,
     CombinedTermination
