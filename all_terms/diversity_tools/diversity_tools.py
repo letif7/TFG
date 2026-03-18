@@ -1,12 +1,11 @@
 import numpy as np
 
 
-
 # ===============================
 # MATRIZ BLOSUM62
 # ===============================
 
-BLOSUM62 =  {
+BLOSUM62 = {
 'A': {'A': 4, 'R':-1, 'N':-2, 'D':-2, 'C': 0, 'Q':-1, 'E':-1, 'G': 0, 'H':-2, 'I':-1, 'L':-1, 'K':-1, 'M':-1, 'F':-2, 'P':-1, 'S': 1, 'T': 0, 'W':-3, 'Y':-2, 'V': 0},
 'R': {'A':-1, 'R': 5, 'N': 0, 'D':-2, 'C':-3, 'Q': 1, 'E': 0, 'G':-2, 'H': 0, 'I':-3, 'L':-2, 'K': 2, 'M':-1, 'F':-3, 'P':-2, 'S':-1, 'T':-1, 'W':-3, 'Y':-2, 'V':-3},
 'N': {'A':-2, 'R': 0, 'N': 6, 'D': 1, 'C':-3, 'Q': 0, 'E': 0, 'G': 0, 'H': 1, 'I':-3, 'L':-3, 'K': 0, 'M':-2, 'F':-3, 'P':-2, 'S': 1, 'T': 0, 'W':-4, 'Y':-2, 'V':-3},
@@ -31,14 +30,17 @@ BLOSUM62 =  {
 
 
 # ===============================
-# DISTANCIA BLOSUM62 NORMALIZADA
+# MIN SCORE GLOBAL
+# ===============================
+
+MIN_SCORE = min(score for row in BLOSUM62.values() for score in row.values())
+
+
+# ===============================
+# DISTANCIA BLOSUM62
 # ===============================
 
 def blosum62_distance(seq1: str, seq2: str) -> float:
-    """
-    Distancia normalizada entre dos secuencias usando BLOSUM62.
-    Retorna valor en [0, 1].
-    """
 
     if len(seq1) != len(seq2):
         return np.nan
@@ -46,32 +48,22 @@ def blosum62_distance(seq1: str, seq2: str) -> float:
     total_dist = 0.0
     max_dist = 0.0
 
-    min_score_global = min(BLOSUM62.values())
-
     for aa1, aa2 in zip(seq1, seq2):
 
-        # Obtener score considerando simetría
-        if (aa1, aa2) in BLOSUM62:
-            score = BLOSUM62[(aa1, aa2)]
-        elif (aa2, aa1) in BLOSUM62:
-            score = BLOSUM62[(aa2, aa1)]
+        if aa1 not in BLOSUM62 or aa2 not in BLOSUM62[aa1]:
+            score = MIN_SCORE
         else:
-            # Aminoácido no encontrado
-            continue
+            score = BLOSUM62[aa1][aa2]
 
-        # Score máximo posible en esa posición
-        if (aa1, aa1) in BLOSUM62:
-            max_score = BLOSUM62[(aa1, aa1)]
-        else:
-            max_score = 0
+        max_score = BLOSUM62.get(aa1, {}).get(aa1, 0)
 
         total_dist += (max_score - score)
-        max_dist += (max_score - min_score_global)
+        max_dist += (max_score - MIN_SCORE)
 
-    if max_dist > 0:
-        return total_dist / max_dist
+    if max_dist == 0:
+        return 0.0
 
-    return 0.0
+    return total_dist / max_dist
 
 
 # ===============================

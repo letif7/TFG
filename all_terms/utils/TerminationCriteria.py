@@ -12,7 +12,7 @@ class StoppingByTime(TerminationCriterion):
         self.max_seconds = max_seconds
         self.start_time = None
 
-    def update(self, algorithm):
+    def update(self, *args, **kwargs):
         if self.start_time is None:
             self.start_time = time.time()
 
@@ -32,8 +32,9 @@ class StoppingByDiversity(TerminationCriterion):
         self.counter = 0
         self.amino_seq_ref = amino_seq_ref
 
-    def update(self, algorithm):
-        population = algorithm.solutions
+    def update(self, *args, **kwargs):
+
+        population = kwargs["SOLUTIONS"]
 
         sequences = []
         for sol in population:
@@ -53,7 +54,6 @@ class StoppingByDiversity(TerminationCriterion):
     @property
     def is_met(self):
         return self.counter >= self.patience
-
 
 from jmetal.util.termination_criterion import TerminationCriterion
 
