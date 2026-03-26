@@ -80,7 +80,8 @@ def optimizar_plegamiento_proteina(
     mutation = PolynomialMutation(probability=mutation_probability, distribution_index=mutation_distribution_index)
     # --- Criterio 1: límite de 24 horas ---
     termination_time = StoppingByTime(
-        max_seconds=24 * 60 * 60
+        #max_seconds=24 * 60 * 60
+        max_seconds=120
     )
 
     # --- Criterio 2: convergencia por diversidad ---
@@ -116,6 +117,7 @@ def optimizar_plegamiento_proteina(
     # algorithm.observable.register(observer=PrintObjectivesObserver(frequency=10))
 
     algorithm.run()
+    print(f"Termino de correr el algoritmo")
     solutions = algorithm.result()
 
     # Validar que objectives son 7 floats
