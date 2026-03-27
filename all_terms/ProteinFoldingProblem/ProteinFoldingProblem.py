@@ -7,7 +7,7 @@ from jmetal.core.problem import FloatProblem
 from jmetal.core.solution import FloatSolution
 from typing import List, Dict
 import esm
-import pyrosetta
+from pyrosetta import Pose
 from pyrosetta.rosetta.core.import_pose import pose_from_pdbstring
 from pyrosetta.rosetta.core.scoring import get_score_function
 
@@ -147,12 +147,10 @@ class ProteinFoldingProblem(FloatProblem):
 
     def calcular_energia_pyrosetta(self, pdb_str: str) -> float:
         try:
-            # Cargar la estructura desde el string PDB (ya plegado por ESMFold)
-            pose = pose_from_pdbstring(pdb_str)
-            
-            # Score function estándar de Rosetta
-            sfxn = get_score_function(True)  # True = usa ref2015
-            
+            pose = Pose()
+            pose_from_pdbstring(pose, pdb_str)
+
+            sfxn = get_score_function(True)
             energia = sfxn(pose)
             return float(energia)
 
@@ -196,7 +194,7 @@ class ProteinFoldingProblem(FloatProblem):
                 descriptor_temp = descriptores(sequence, self.tokenizer, self.model_ESM2) #obtiene una representacion estadistica de la secuencia y de eso deriva los rasgos fisico-quimicos/probabilisticos
                 self.descriptor_cache[sequence] = descriptor_temp
 
-            rms, gdt, MC_similitud, divKl, tms, energia_design_a, energia_design_b = (
+            rms, gdt, MC_similitud, divKl, tms = (
                 fitness_gdt_rmsd_mc_fisquim(
                     self.backbone_reference, coords_3d, sequence, self.reference_sequence ,
                     self.mapa_binario_referencia_MC, self.corte,

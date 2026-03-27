@@ -191,10 +191,10 @@ def fitness_gdt_rmsd_mc_fisquim(x,y,sequence_b, sequence_a,MC_BB,corte,descripto
     tms = tm_score(x,y)
 
     #energia
-    energia_design_a = _calculate_design_energy(sequence_a)
-    energia_design_b = _calculate_design_energy(sequence_b)
+    #energia_design_a = _calculate_design_energy(sequence_a)
+    #energia_design_b = _calculate_design_energy(sequence_b)
 
-    return rms, gdt, MC_similitud, divKl, tms, energia_design_a, energia_design_b
+    return rms, gdt, MC_similitud, divKl, tms
 
 
 "determina las metricas utilizadas en el fitness"
