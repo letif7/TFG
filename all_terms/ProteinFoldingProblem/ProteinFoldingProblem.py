@@ -152,6 +152,7 @@ class ProteinFoldingProblem(FloatProblem):
 
             sfxn = get_score_function(True)
             energia = sfxn(pose)
+            print(f"Energia total: {energia}")
             return float(energia)
 
         except Exception as e:
@@ -223,7 +224,7 @@ class ProteinFoldingProblem(FloatProblem):
                 "gdt": gdt,
                 "mc_similarity": MC_similitud,
                 "tms_score": tms,
-                "design_energy": energia_design_b,
+                "design_energy": energia_rosetta,
                 "folded_coordinates": coords_3d
             }
 
