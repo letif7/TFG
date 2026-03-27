@@ -8,7 +8,7 @@ from jmetal.core.solution import FloatSolution
 from typing import List, Dict
 import esm
 import pyrosetta
-from pyrosetta import pose_from_pdbstring
+from pyrosetta.rosetta.core.import_pose import pose_from_pdbstring
 from pyrosetta.rosetta.core.scoring import get_score_function
 
 from transformers import EsmTokenizer, EsmModel, EsmForProteinFolding
