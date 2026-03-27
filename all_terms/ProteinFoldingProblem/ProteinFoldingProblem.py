@@ -7,6 +7,9 @@ from jmetal.core.problem import FloatProblem
 from jmetal.core.solution import FloatSolution
 from typing import List, Dict
 import esm
+import pyrosetta
+from pyrosetta import pose_from_pdbstring
+from pyrosetta.rosetta.core.scoring import get_score_function
 
 from transformers import EsmTokenizer, EsmModel, EsmForProteinFolding
 from ..pdb_seq_tools.pdb_seq_tools import extract_amino_acid_sequence, extract_backbone_atoms_str
@@ -142,31 +145,20 @@ class ProteinFoldingProblem(FloatProblem):
     import numpy as np
     import logging
 
-    def _calculate_design_energy(self, coords_3d) -> float:
-        """Calcula energía de diseño simplificada basada en distancias consecutivas."""
+    def calcular_energia_pyrosetta(self, pdb_str: str) -> float:
+        try:
+            # Cargar la estructura desde el string PDB (ya plegado por ESMFold)
+            pose = pose_from_pdbstring(pdb_str)
+            
+            # Score function estándar de Rosetta
+            sfxn = get_score_function(True)  # True = usa ref2015
+            
+            energia = sfxn(pose)
+            return float(energia)
 
-        # asegurar que coords_3d sea un numpy array
-        coords_3d = np.asarray(coords_3d, dtype=float)
-
-        # validaciones básicas de forma
-        if coords_3d.ndim != 2 or coords_3d.shape[0] < 2 or coords_3d.shape[1] != 3:
-            logging.warning(
-                f"coords_3d inválido en _calculate_design_energy: shape={coords_3d.shape}"
-            )
-            # Devolvemos una energía muy alta para penalizar esta solución
+        except Exception as e:
+            logging.warning(f"Error calculando energía PyRosetta: {e}")
             return float("inf")
-
-        # logica original de energía
-        distancias = np.linalg.norm(coords_3d[1:] - coords_3d[:-1], axis=1)
-
-        energia_corta = np.sum(
-            np.where(distancias < 1.0, (1.0 - distancias) ** 2, 0.0)
-        )
-        energia_larga = np.sum(
-            np.where(distancias > 5.0, (distancias - 5.0) ** 2, 0.0)
-        )
-
-        return float(energia_corta + energia_larga)
 
     def _to_float(self, x, default=float("inf")):
         import numpy as np
@@ -195,6 +187,8 @@ class ProteinFoldingProblem(FloatProblem):
             sequence = self.sequence_from_solution(solution)
             pdb_str, coords_3d = self.fold_sequence(sequence)
 
+            # Energía desde la estructura plegada por ESMFold ✅
+            energia_rosetta = self.calcular_energia_pyrosetta(pdb_str)
 
             if sequence in self.descriptor_cache:
                 descriptor_temp = self.descriptor_cache[sequence]
@@ -211,7 +205,7 @@ class ProteinFoldingProblem(FloatProblem):
             )
             f1, f2, f3 = agrega_rmsd_gdt_E_MC_divKl(
                 MC_similitud,  rms, gdt,
-                divKl, energia_design_a, energia_design_b, 30, tms
+                divKl, energia_design_a, energia_rosetta, 30, tms
             )
             
 
