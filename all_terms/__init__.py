@@ -35,7 +35,7 @@ from .utils import (
 def optimizar_plegamiento_proteina(
     pdb_reference_file: str = None,
     max_evaluations: int = 100,
-    population_size: int = 100,
+    population_size: int = 5,
     use_physicochemical_descriptors: bool = True,
     corte: list = [1.0, 2.0, 4.0, 8.0],
     energia_params: tuple = (-50.0, 10.0),
@@ -81,7 +81,7 @@ def optimizar_plegamiento_proteina(
     # --- Criterio 1: límite de 24 horas ---
     termination_time = StoppingByTime(
         #max_seconds=24 * 60 * 60
-        max_seconds=120
+        max_seconds=600
     )
 
     # --- Criterio 2: convergencia por diversidad ---
