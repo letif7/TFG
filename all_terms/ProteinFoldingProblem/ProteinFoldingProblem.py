@@ -203,7 +203,7 @@ class ProteinFoldingProblem(FloatProblem):
             )
             f1, f2, f3 = agrega_rmsd_gdt_E_MC_divKl(
                 MC_similitud,  rms, gdt,
-                divKl, energia_design_a, energia_rosetta, 30, tms
+                divKl, energia_rosetta, 30, tms
             )
             
 
