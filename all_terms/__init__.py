@@ -80,8 +80,8 @@ def optimizar_plegamiento_proteina(
     mutation = PolynomialMutation(probability=mutation_probability, distribution_index=mutation_distribution_index)
     # --- Criterio 1: límite de 24 horas ---
     termination_time = StoppingByTime(
-        #max_seconds=24 * 60 * 60
-        max_seconds=780
+        max_seconds=24 * 60 * 60
+        #x_seconds=780
     )
 
     # --- Criterio 2: convergencia por diversidad ---
