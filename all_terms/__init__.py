@@ -155,7 +155,8 @@ def optimizar_plegamiento_proteina(
     algorithm.observable.register(observer=ProgressBarObserver(max_evaluations))
 
     # Log cada N evaluaciones (elige uno)
-    algorithm.observable.register(observer=BasicObserver(frequency=10))
+    #algorithm.observable.register(observer=BasicObserver(frequency=10))
+    algorithm.observable.register(observer=GuardarParetoCadaN(cada=10))
     # o si solo querés imprimir fitness:
     # algorithm.observable.register(observer=PrintObjectivesObserver(frequency=10))
 
