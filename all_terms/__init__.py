@@ -22,15 +22,21 @@ from Bio.PDB.PDBExceptions import PDBConstructionWarning
 warnings.simplefilter("ignore", PDBConstructionWarning)
 
 from jmetal.util.observer import Observer
+import datetime
 
 class GuardarParetoCadaN(Observer):
 
     def __init__(self, algorithm, cada=10, drive_dir="/content/drive/MyDrive/resultados_proteina"):
         self.algorithm = algorithm
         self.cada = cada
-        self.drive_dir = drive_dir
+
+        #guarda en una carpeta por ejecucion
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.drive_dir = os.path.join(drive_dir, f"run_{timestamp}")
+
         os.makedirs("partial_results", exist_ok=True)  # ← faltaba esto
         os.makedirs(drive_dir, exist_ok=True)
+        print(f"Guardando resultados en: {self.drive_dir}")
 
     def update(self, *args, **kwargs):
         evaluaciones = kwargs.get("EVALUATIONS", 0)
