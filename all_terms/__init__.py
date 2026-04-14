@@ -51,6 +51,7 @@ class GuardarParetoCadaN(Observer):
                 print_function_values_to_file(pareto, os.path.join(carpeta_local, "PARETO_FUN.tsv"))
                 print_variables_to_file(pareto, os.path.join(carpeta_local, "PARETO_VAR.tsv"))
                 exportar_pareto_y_variables_csv(pareto, carpeta_local)
+                plot_pareto_front_3d(pareto, carpeta_local)
 
                 carpeta_drive = os.path.join(self.drive_dir, f"checkpoint_eval_{evaluaciones}")
                 shutil.copytree(carpeta_local, carpeta_drive, dirs_exist_ok=True)
