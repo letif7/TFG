@@ -158,10 +158,10 @@ def optimizar_plegamiento_proteina(
     # Log cada N evaluaciones (elige uno)
     #algorithm.observable.register(observer=BasicObserver(frequency=10))
     algorithm.observable.register(observer=GuardarParetoCadaN(
-    algorithm=algorithm,
-    cada=10,  # guarda cada generación completa
-    drive_dir="/content/drive/MyDrive/resultados_proteina"
-))
+        algorithm=algorithm,
+        cada=population_size # generación completa
+        drive_dir="/content/drive/MyDrive/resultados_proteina"
+    ))
     # o si solo querés imprimir fitness:
     # algorithm.observable.register(observer=PrintObjectivesObserver(frequency=10))
 
