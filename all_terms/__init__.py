@@ -20,6 +20,49 @@ import warnings
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
 warnings.simplefilter("ignore", PDBConstructionWarning)
 
+from jmetal.util.observer import Observer
+
+class GuardarParetoCadaN(Observer):
+
+    def __init__(self, algorithm, cada=10):
+        self.algorithm = algorithm
+        self.cada = cada
+
+    def update(self, *args, **kwargs):
+        evaluaciones = kwargs.get("EVALUATIONS", 0)
+
+        if evaluaciones % self.cada == 0:
+
+            try:
+                solutions = self.algorithm.solutions
+
+                if not solutions:
+                    return
+
+                pareto = get_non_dominated_solutions(solutions)
+
+                if not pareto:
+                    return
+
+                carpeta = f"partial_results/eval_{evaluaciones}"
+                os.makedirs(carpeta, exist_ok=True)
+
+                print(f"💾 Guardando Pareto en eval {evaluaciones} (size={len(pareto)})")
+
+                print_function_values_to_file(pareto, os.path.join(carpeta, "PARETO_FUN.tsv"))
+                print_variables_to_file(pareto, os.path.join(carpeta, "PARETO_VAR.tsv"))
+
+                exportar_pareto_y_variables_csv(pareto, carpeta)
+
+                try:
+                    plot_pareto_front_3d(pareto, carpeta)
+                except:
+                    pass
+
+            except Exception as e:
+                print(f"❌ Error guardando parcial: {e}")
+
+
 # Importar tus clases locales
 from .ProteinFoldingProblem.ProteinFoldingProblem import ProteinFoldingProblem
 from .pdb_seq_tools import extract_amino_acid_sequence, det_sec, extract_backbone_atoms_str
