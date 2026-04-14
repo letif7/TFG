@@ -24,44 +24,38 @@ from jmetal.util.observer import Observer
 
 class GuardarParetoCadaN(Observer):
 
-    def __init__(self, algorithm, cada=10):
+    def __init__(self, algorithm, cada=10, drive_dir="/content/drive/MyDrive/resultados_proteina"):
         self.algorithm = algorithm
         self.cada = cada
+        self.drive_dir = drive_dir
+        os.makedirs(drive_dir, exist_ok=True)
 
     def update(self, *args, **kwargs):
         evaluaciones = kwargs.get("EVALUATIONS", 0)
+        solutions = kwargs.get("SOLUTIONS", [])  # ← más seguro que self.algorithm.solutions
 
-        if evaluaciones % self.cada == 0:
-
+        if evaluaciones % self.cada == 0 and solutions:
             try:
-                solutions = self.algorithm.solutions
-
-                if not solutions:
-                    return
-
                 pareto = get_non_dominated_solutions(solutions)
-
                 if not pareto:
                     return
 
-                carpeta = f"partial_results/eval_{evaluaciones}"
-                os.makedirs(carpeta, exist_ok=True)
+                # Guarda local
+                carpeta_local = f"partial_results/eval_{evaluaciones}"
+                os.makedirs(carpeta_local, exist_ok=True)
 
-                print(f"💾 Guardando Pareto en eval {evaluaciones} (size={len(pareto)})")
+                print_function_values_to_file(pareto, os.path.join(carpeta_local, "PARETO_FUN.tsv"))
+                print_variables_to_file(pareto, os.path.join(carpeta_local, "PARETO_VAR.tsv"))
+                exportar_pareto_y_variables_csv(pareto, carpeta_local)
 
-                print_function_values_to_file(pareto, os.path.join(carpeta, "PARETO_FUN.tsv"))
-                print_variables_to_file(pareto, os.path.join(carpeta, "PARETO_VAR.tsv"))
+                # Copia al Drive
+                carpeta_drive = os.path.join(self.drive_dir, f"checkpoint_eval_{evaluaciones}")
+                shutil.copytree(carpeta_local, carpeta_drive, dirs_exist_ok=True)
 
-                exportar_pareto_y_variables_csv(pareto, carpeta)
-
-                try:
-                    plot_pareto_front_3d(pareto, carpeta)
-                except:
-                    pass
+                print(f"Checkpoint guardado en Drive: eval {evaluaciones} (pareto size={len(pareto)})")
 
             except Exception as e:
-                print(f"❌ Error guardando parcial: {e}")
-
+                print(f"Error guardando checkpoint: {e}")
 
 # Importar tus clases locales
 from .ProteinFoldingProblem.ProteinFoldingProblem import ProteinFoldingProblem
@@ -156,7 +150,11 @@ def optimizar_plegamiento_proteina(
 
     # Log cada N evaluaciones (elige uno)
     #algorithm.observable.register(observer=BasicObserver(frequency=10))
-    algorithm.observable.register(observer=GuardarParetoCadaN(cada=10))
+    algorithm.observable.register(observer=GuardarParetoCadaN(
+    algorithm=algorithm,
+    cada=10,  # guarda cada generación completa
+    drive_dir="/content/drive/MyDrive/resultados_proteina"
+))
     # o si solo querés imprimir fitness:
     # algorithm.observable.register(observer=PrintObjectivesObserver(frequency=10))
 
