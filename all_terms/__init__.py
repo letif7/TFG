@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import esm
 import pyrosetta
+import shutil
 
 # jMetalPy imports corregidos
 from jmetal.algorithm.multiobjective.nsgaii import NSGAII
@@ -28,19 +29,22 @@ class GuardarParetoCadaN(Observer):
         self.algorithm = algorithm
         self.cada = cada
         self.drive_dir = drive_dir
+        os.makedirs("partial_results", exist_ok=True)  # ← faltaba esto
         os.makedirs(drive_dir, exist_ok=True)
 
     def update(self, *args, **kwargs):
         evaluaciones = kwargs.get("EVALUATIONS", 0)
-        solutions = kwargs.get("SOLUTIONS", [])  # ← más seguro que self.algorithm.solutions
+        solutions = kwargs.get("SOLUTIONS", [])
 
-        if evaluaciones % self.cada == 0 and solutions:
+        # ← Agregá este print para confirmar que se llama
+        print(f"DEBUG observer: eval={evaluaciones}, sols={len(solutions) if solutions else 0}")
+
+        if evaluaciones % self.cada == 0 and evaluaciones > 0 and solutions:
             try:
                 pareto = get_non_dominated_solutions(solutions)
                 if not pareto:
                     return
 
-                # Guarda local
                 carpeta_local = f"partial_results/eval_{evaluaciones}"
                 os.makedirs(carpeta_local, exist_ok=True)
 
@@ -48,15 +52,17 @@ class GuardarParetoCadaN(Observer):
                 print_variables_to_file(pareto, os.path.join(carpeta_local, "PARETO_VAR.tsv"))
                 exportar_pareto_y_variables_csv(pareto, carpeta_local)
 
-                # Copia al Drive
                 carpeta_drive = os.path.join(self.drive_dir, f"checkpoint_eval_{evaluaciones}")
                 shutil.copytree(carpeta_local, carpeta_drive, dirs_exist_ok=True)
 
-                print(f"Checkpoint guardado en Drive: eval {evaluaciones} (pareto size={len(pareto)})")
+                print(f"Checkpoint guardado en Drive: eval {evaluaciones} (pareto={len(pareto)})")
 
             except Exception as e:
                 print(f"Error guardando checkpoint: {e}")
+                import traceback
+                traceback.print_exc()  # ← muestra el error completo
 
+                
 # Importar tus clases locales
 from .ProteinFoldingProblem.ProteinFoldingProblem import ProteinFoldingProblem
 from .pdb_seq_tools import extract_amino_acid_sequence, det_sec, extract_backbone_atoms_str
