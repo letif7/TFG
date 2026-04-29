@@ -411,9 +411,11 @@ def plot_pareto_front_3d(solutions, output_dir, file_name="PARETO_3D.png"):
     ax = fig.add_subplot(111, projection="3d")
     ax.scatter(xs, ys, zs)
 
-    ax.set_xlabel("f0 (RMSD)")
-    ax.set_ylabel("f1 (-GDT)")
-    ax.set_zlabel("f2 (Energy)")
+    ax.set_xlabel("f0 \nCalidad estructural\nRMSD+GDT+MC)")
+    ax.set_ylabel("f1 \n(Energía PyRosetta)")
+    ax.set_zlabel("f2 \n(Similitud fisicoquímica\nKL-div)")
+
+    ax.set_title("Frente de Pareto — valores negados (más negativo = mejor)")
 
     os.makedirs(output_dir, exist_ok=True)
     ruta = os.path.join(output_dir, file_name)
