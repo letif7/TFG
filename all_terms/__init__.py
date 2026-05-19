@@ -172,6 +172,23 @@ def optimizar_plegamiento_proteina(
     # algorithm.observable.register(observer=PrintObjectivesObserver(frequency=10))
 
     algorithm.run()
+
+    # Archivo donde guardar motivo de terminación
+    termination_file = "/content/drive/MyDrive/resultados_proteina/termination_reason.txt"
+
+    with open(termination_file, "w") as f:
+
+        if termination_time.is_met:
+            f.write("NSGA-II terminó por límite de tiempo (24 horas).\n")
+
+        elif termination_div.is_met:
+            f.write("NSGA-II terminó por convergencia/diversidad.\n")
+
+        else:
+            f.write("NSGA-II terminó por una causa desconocida.\n")
+
+    print(f"Motivo de terminación guardado en: {termination_file}")
+
     print(f"Termino de correr el algoritmo")
     solutions = algorithm.result()
 
