@@ -130,7 +130,7 @@ def optimizar_plegamiento_proteina(
     mutation = PolynomialMutation(probability=mutation_probability, distribution_index=mutation_distribution_index)
     # --- Criterio 1: límite de 24 horas ---
     termination_time = StoppingByTime(
-        max_seconds=24 * 60 * 60
+        max_seconds= 24 * 60 * 60
         #x_seconds=780
     )
 
@@ -160,13 +160,15 @@ def optimizar_plegamiento_proteina(
 
     # Barra de progreso (tqdm) hasta max_evaluations
     algorithm.observable.register(observer=ProgressBarObserver(max_evaluations))
-
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    drive_dir = os.path.join("/content/drive/MyDrive/resultados_proteina", f"run_{timestamp}")
+    os.makedirs(drive_dir, exist_ok=True)
     # Log cada N evaluaciones (elige uno)
     #algorithm.observable.register(observer=BasicObserver(frequency=10))
     algorithm.observable.register(observer=GuardarParetoCadaN(
         algorithm=algorithm,
         cada=population_size,# generación completa
-        drive_dir="/content/drive/MyDrive/resultados_proteina"
+        drive_dir=drive_dir
     ))
     # o si solo querés imprimir fitness:
     # algorithm.observable.register(observer=PrintObjectivesObserver(frequency=10))
@@ -174,7 +176,7 @@ def optimizar_plegamiento_proteina(
     algorithm.run()
 
     # Archivo donde guardar motivo de terminación
-    termination_file = "/content/drive/MyDrive/resultados_proteina/termination_reason.txt"
+    termination_file = os.path.join(drive_dir, "termination_reason.txt")
 
     with open(termination_file, "w") as f:
 
